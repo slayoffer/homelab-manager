@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Slack/MCP cache
+.channels_cache_v2.json
+.users_cache.json
+
+# Runtime data
+data/
+
+# Environment overrides
+.env
+.env.*
