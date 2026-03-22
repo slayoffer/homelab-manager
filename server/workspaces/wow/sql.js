@@ -2,7 +2,7 @@ import { execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import config from '../../config.js';
-import { loadState, updateState } from '../../state.js';
+import db, { audit } from '../../db.js';
 
 function findSqlFiles(basePath, subPath) {
   const fullPath = path.join(basePath, subPath);
@@ -24,6 +24,31 @@ function findSqlFiles(basePath, subPath) {
   return results;
 }
 
+function extractSqlComment(filePath) {
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    // Extract /* ... */ block comment at the start of the file
+    const match = content.match(/^\s*\/\*\s*([\s\S]*?)\s*\*\//);
+    if (match) return match[1].trim();
+    // Try -- line comments at the start
+    const lines = content.split('\n');
+    const commentLines = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('--')) {
+        commentLines.push(trimmed.slice(2).trim());
+      } else if (trimmed === '' && commentLines.length === 0) {
+        continue;
+      } else {
+        break;
+      }
+    }
+    return commentLines.join(' ').trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 function categorizeFile(filePath) {
   const parts = filePath.toLowerCase();
   let database = 'world';
@@ -40,7 +65,6 @@ function categorizeFile(filePath) {
 }
 
 export function scanMigrations() {
-  const state = loadState();
   const modulesDir = path.join(config.wow.basePath, 'modules');
   const modules = [];
 
@@ -87,11 +111,12 @@ export function scanMigrations() {
         type: 'optional',
         size: stat.size,
         modified: stat.mtime.toISOString(),
+        description: extractSqlComment(fullPath),
       });
     }
 
     // Check which are new (after last applied commit)
-    const lastCommit = state.wow?.lastAppliedCommits?.[modName];
+    const lastCommit = db.prepare('SELECT commit_hash FROM applied_commits WHERE module_name = ?').get(modName)?.commit_hash;
     if (lastCommit) {
       try {
         const newFiles = execSync(
@@ -103,7 +128,6 @@ export function scanMigrations() {
           m.isNew = newFiles.some(f => m.fullPath.includes(f) || f.includes(m.file));
         }
       } catch {
-        // if git diff fails, mark all as potentially new
         for (const m of migrations) m.isNew = true;
       }
     } else {
@@ -111,7 +135,10 @@ export function scanMigrations() {
     }
 
     // Load saved preferences for optional migrations
-    const prefs = state.wow?.sqlPreferences?.[modName] || {};
+    const prefRows = db.prepare('SELECT migration_id, selected FROM sql_preferences WHERE module_name = ?').all(modName);
+    const prefs = {};
+    for (const row of prefRows) prefs[row.migration_id] = !!row.selected;
+
     for (const m of migrations) {
       if (m.type === 'optional') {
         m.selected = prefs[m.id] ?? false;
@@ -126,37 +153,57 @@ export function scanMigrations() {
   return modules;
 }
 
-export function applySqlFile(absolutePath, database) {
+export function applySqlFile(absolutePath, database, migrationId, moduleName) {
   const dbName = config.wow.databases[database] || database;
   const container = config.wow.dbContainer;
   const user = config.wow.dbUser;
   const pass = config.wow.dbPassword;
 
+  const start = performance.now();
   try {
     const output = execSync(
       `docker exec -i ${container} mysql -u"${user}" -p"${pass}" "${dbName}" < "${absolutePath}"`,
       { encoding: 'utf-8', timeout: 60000, shell: '/bin/bash' }
     );
+    const duration = Math.round(performance.now() - start);
+
+    // Record in applied_migrations
+    if (migrationId && moduleName) {
+      db.prepare(
+        'INSERT OR REPLACE INTO applied_migrations (module_name, migration_file, database_name, type, status, output, duration_ms) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      ).run(moduleName, migrationId, database, null, 'success', output.trim().slice(0, 5000), duration);
+    }
+
+    audit('migration.apply', migrationId, { module: moduleName, database, duration_ms: duration }, 'success');
     return { success: true, output: output.trim() };
   } catch (err) {
-    return { success: false, error: err.stderr || err.message };
+    const duration = Math.round(performance.now() - start);
+    const error = err.stderr || err.message;
+
+    if (migrationId && moduleName) {
+      db.prepare(
+        'INSERT OR REPLACE INTO applied_migrations (module_name, migration_file, database_name, type, status, output, duration_ms) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      ).run(moduleName, migrationId, database, null, 'failed', error.slice(0, 5000), duration);
+    }
+
+    audit('migration.apply', migrationId, { module: moduleName, database, error: error.slice(0, 500) }, 'failed');
+    return { success: false, error };
   }
 }
 
 export function saveSqlPreferences(moduleName, preferences) {
-  updateState(state => {
-    if (!state.wow.sqlPreferences) state.wow.sqlPreferences = {};
-    state.wow.sqlPreferences[moduleName] = preferences;
-  });
+  const upsert = db.prepare('INSERT OR REPLACE INTO sql_preferences (module_name, migration_id, selected) VALUES (?, ?, ?)');
+  db.transaction(() => {
+    for (const [id, selected] of Object.entries(preferences)) {
+      upsert.run(moduleName, id, selected ? 1 : 0);
+    }
+  })();
 }
 
 export function markMigrationsApplied(moduleName) {
   const modPath = path.join(config.wow.basePath, 'modules', moduleName);
   try {
     const commit = execSync('git rev-parse HEAD', { cwd: modPath, encoding: 'utf-8' }).trim();
-    updateState(state => {
-      if (!state.wow.lastAppliedCommits) state.wow.lastAppliedCommits = {};
-      state.wow.lastAppliedCommits[moduleName] = commit;
-    });
+    db.prepare('INSERT OR REPLACE INTO applied_commits (module_name, commit_hash) VALUES (?, ?)').run(moduleName, commit);
   } catch { /* ignore */ }
 }

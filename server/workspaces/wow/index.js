@@ -2,8 +2,11 @@ import { Router } from 'express';
 import { WorkspaceBase } from '../base.js';
 import { getAllRepos, getRepoStatus, fetchRepo, pullRepo, cloneModule, removeModule } from './git.js';
 import { scanMigrations, applySqlFile, saveSqlPreferences, markMigrationsApplied } from './sql.js';
-import { getContainerStatus, dockerComposeAction } from './docker.js';
+import { getContainerStatus, dockerComposeAction, containerStats, restartContainer, getContainerLogs } from './docker.js';
 import { listBackups, backupDirectory, backupDatabase, backupVolumes, restoreDatabase, restoreDirectory, pruneBackups } from './backup.js';
+import { listDatabases, listTables, describeTable, queryTable, updateRow } from './database.js';
+import { listConfigFiles, readConfig, diffConfig, saveConfig, mergeNewSettings, getConfigHistory, rollbackConfig } from './configs.js';
+import db from '../../db.js';
 
 export class WowWorkspace extends WorkspaceBase {
   constructor() {
@@ -48,6 +51,34 @@ export class WowWorkspace extends WorkspaceBase {
         res.json(getContainerStatus());
       } catch (err) {
         res.status(500).json({ error: err.message });
+      }
+    });
+
+    // Container stats (CPU/memory)
+    router.get('/containers/stats', (req, res) => {
+      try {
+        res.json(containerStats());
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // Container logs (non-streaming, last N lines)
+    router.get('/containers/:name/logs', (req, res) => {
+      try {
+        const tail = req.query.tail || 200;
+        res.json(getContainerLogs(req.params.name, tail));
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    // Restart individual container
+    router.post('/containers/:name/restart', (req, res) => {
+      try {
+        res.json(restartContainer(req.params.name));
+      } catch (err) {
+        res.status(400).json({ error: err.message });
       }
     });
 
@@ -121,7 +152,7 @@ export class WowWorkspace extends WorkspaceBase {
         const { migrations } = req.body; // [{id, absolutePath, database, module}]
         const results = [];
         for (const m of migrations) {
-          const result = applySqlFile(m.absolutePath, m.database);
+          const result = applySqlFile(m.absolutePath, m.database, m.id, m.module);
           results.push({ id: m.id, ...result });
           if (result.success) {
             markMigrationsApplied(m.module);
@@ -209,6 +240,188 @@ export class WowWorkspace extends WorkspaceBase {
     router.post('/backups/prune', (req, res) => {
       try {
         res.json(pruneBackups());
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // Database Explorer
+    router.get('/database', (req, res) => {
+      try {
+        res.json(listDatabases());
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    router.get('/database/:db/tables', (req, res) => {
+      try {
+        res.json(listTables(req.params.db));
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    router.get('/database/:db/:table/schema', (req, res) => {
+      try {
+        res.json(describeTable(req.params.db, req.params.table));
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    router.get('/database/:db/:table/rows', (req, res) => {
+      try {
+        res.json(queryTable(req.params.db, req.params.table, req.query));
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    router.post('/database/:db/:table/update', (req, res) => {
+      try {
+        const { primaryKey, updates } = req.body;
+        if (!primaryKey || !updates) {
+          return res.status(400).json({ error: 'primaryKey and updates required' });
+        }
+        res.json(updateRow(req.params.db, req.params.table, primaryKey, updates));
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    // Config Editor
+    router.get('/configs', (req, res) => {
+      try {
+        res.json(listConfigFiles());
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    router.get('/configs/read', (req, res) => {
+      try {
+        if (!req.query.path) return res.status(400).json({ error: 'path required' });
+        res.json(readConfig(req.query.path));
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    router.get('/configs/diff', (req, res) => {
+      try {
+        if (!req.query.path) return res.status(400).json({ error: 'path required' });
+        res.json(diffConfig(req.query.path));
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    router.post('/configs/save', (req, res) => {
+      try {
+        const { path: configPath, content } = req.body;
+        if (!configPath || content === undefined) {
+          return res.status(400).json({ error: 'path and content required' });
+        }
+        res.json(saveConfig(configPath, content));
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    router.post('/configs/merge', (req, res) => {
+      try {
+        const { path: configPath } = req.body;
+        if (!configPath) return res.status(400).json({ error: 'path required' });
+        res.json(mergeNewSettings(configPath));
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    router.get('/configs/history', (req, res) => {
+      try {
+        if (!req.query.path) return res.status(400).json({ error: 'path required' });
+        res.json(getConfigHistory(req.query.path));
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    router.post('/configs/rollback', (req, res) => {
+      try {
+        const { snapshotId } = req.body;
+        if (!snapshotId) return res.status(400).json({ error: 'snapshotId required' });
+        res.json(rollbackConfig(snapshotId));
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    // Alert Patterns
+    router.get('/alert-patterns', (req, res) => {
+      try {
+        res.json(db.prepare('SELECT * FROM alert_patterns ORDER BY created_at').all());
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    router.post('/alert-patterns', (req, res) => {
+      try {
+        const { pattern, isRegex, notify } = req.body;
+        if (!pattern) return res.status(400).json({ error: 'pattern required' });
+        const result = db.prepare('INSERT INTO alert_patterns (pattern, is_regex, notify) VALUES (?, ?, ?)').run(pattern, isRegex ? 1 : 0, notify ? 1 : 0);
+        res.json({ id: result.lastInsertRowid, success: true });
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    router.delete('/alert-patterns/:id', (req, res) => {
+      try {
+        db.prepare('DELETE FROM alert_patterns WHERE id = ?').run(req.params.id);
+        res.json({ success: true });
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    router.patch('/alert-patterns/:id', (req, res) => {
+      try {
+        const { enabled, notify } = req.body;
+        if (enabled !== undefined) {
+          db.prepare('UPDATE alert_patterns SET enabled = ? WHERE id = ?').run(enabled ? 1 : 0, req.params.id);
+        }
+        if (notify !== undefined) {
+          db.prepare('UPDATE alert_patterns SET notify = ? WHERE id = ?').run(notify ? 1 : 0, req.params.id);
+        }
+        res.json({ success: true });
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    // Audit Log
+    router.get('/audit-log', (req, res) => {
+      try {
+        const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+        const action = req.query.action;
+        if (action) {
+          res.json(db.prepare('SELECT * FROM audit_log WHERE action LIKE ? ORDER BY timestamp DESC LIMIT ?').all(`${action}%`, limit));
+        } else {
+          res.json(db.prepare('SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT ?').all(limit));
+        }
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // Docker Operation History
+    router.get('/docker/history', (req, res) => {
+      try {
+        const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+        res.json(db.prepare('SELECT * FROM docker_operations ORDER BY started_at DESC LIMIT ?').all(limit));
       } catch (err) {
         res.status(500).json({ error: err.message });
       }
