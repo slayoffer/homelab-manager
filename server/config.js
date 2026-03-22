@@ -20,6 +20,14 @@ const config = {
     containers: ['ac-database', 'ac-worldserver', 'ac-authserver'],
   },
   statePath: process.env.STATE_PATH || path.join(__dirname, '..', 'data', 'state.json'),
+  dbPath: process.env.DB_PATH || path.join(__dirname, '..', 'data', 'homelab.db'),
+  oauth: {
+    clientId: process.env.GITHUB_OAUTH_CLIENT_ID || '',
+    clientSecret: process.env.GITHUB_OAUTH_CLIENT_SECRET || '',
+    redirectUri: process.env.GITHUB_OAUTH_REDIRECT_URI || `http://localhost:${parseInt(process.env.PORT || '3456')}/api/auth/github/callback`,
+    sessionSecret: process.env.SESSION_SECRET || 'homelab-dev-secret-change-me',
+    sessionExpiryDays: 30,
+  },
 };
 
 export default config;
