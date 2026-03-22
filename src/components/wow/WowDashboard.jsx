@@ -2,23 +2,45 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { TerminalOutput } from '@/components/shared/TerminalOutput';
 import { ModuleCard } from './ModuleCard';
 import { SqlMigrations } from './SqlMigrations';
 import { BackupRestore } from './BackupRestore';
+import { DatabaseExplorer } from './DatabaseExplorer';
+import { ContainerLogs } from './ContainerLogs';
+import { ConfigEditor } from './ConfigEditor';
+import { AuditLog } from './AuditLog';
 import { useApi } from '@/hooks/useApi';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import {
   Sword, Play, Square, Hammer, RefreshCw, Download,
-  Loader2, GitBranch, Plus, Trash2, AlertCircle, Archive,
+  Loader2, GitBranch, Plus, Trash2, Archive, Settings2, Activity,
+  ScrollText, RotateCcw, MonitorCheck, GitPullRequest, Puzzle,
+  TableProperties, Database,
 } from 'lucide-react';
+
+function parseCpuPercent(str) {
+  if (!str) return 0;
+  return parseFloat(str.replace('%', '')) || 0;
+}
+
+function parseMemPercent(str) {
+  if (!str) return 0;
+  return parseFloat(str.replace('%', '')) || 0;
+}
 
 export function WowDashboard() {
   const { get, post, del } = useApi();
-  const { logs, running, sendAction, sendBackup, clearLogs } = useWebSocket();
+  const {
+    logs, running, sendAction, sendBackup, clearLogs,
+    containerLogs, followingContainer, sendLogs, stopLogs, clearContainerLogs,
+  } = useWebSocket();
   const [containers, setContainers] = useState([]);
+  const [stats, setStats] = useState({});
   const [repos, setRepos] = useState([]);
   const [updates, setUpdates] = useState(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
@@ -28,6 +50,10 @@ export function WowDashboard() {
   const [newModuleUrl, setNewModuleUrl] = useState('');
   const [newModuleName, setNewModuleName] = useState('');
   const [installing, setInstalling] = useState(false);
+  const [restarting, setRestarting] = useState({});
+  const [activeTab, setActiveTab] = useState('status');
+  const [logsContainer, setLogsContainer] = useState('');
+  const [logAlertCount, setLogAlertCount] = useState(0);
 
   const refreshStatus = useCallback(async () => {
     setLoadingStatus(true);
@@ -39,7 +65,17 @@ export function WowDashboard() {
     setLoadingStatus(false);
   }, [get]);
 
+  const refreshStats = useCallback(async () => {
+    const data = await get('/workspaces/wow/containers/stats');
+    if (Array.isArray(data)) {
+      const map = {};
+      for (const s of data) map[s.name] = s;
+      setStats(map);
+    }
+  }, [get]);
+
   useEffect(() => { refreshStatus(); }, [refreshStatus]);
+  useEffect(() => { refreshStats(); }, [refreshStats]);
 
   const checkUpdates = async () => {
     setChecking(true);
@@ -83,6 +119,20 @@ export function WowDashboard() {
     await refreshStatus();
   };
 
+  const handleRestartContainer = async (name) => {
+    if (!confirm(`Restart container ${name}?`)) return;
+    setRestarting(prev => ({ ...prev, [name]: true }));
+    await post(`/workspaces/wow/containers/${name}/restart`);
+    await refreshStatus();
+    await refreshStats();
+    setRestarting(prev => ({ ...prev, [name]: false }));
+  };
+
+  const viewContainerLogs = (name) => {
+    setLogsContainer(name);
+    setActiveTab('logs');
+  };
+
   const runningCount = containers.filter(c => c.status === 'running').length;
   const totalUpdates = updates
     ? Object.values(updates).reduce((acc, u) => acc + (u.behind || 0), 0)
@@ -105,7 +155,7 @@ export function WowDashboard() {
         <div className="flex items-center gap-2">
           <StatusBadge status={runningCount > 0 ? 'running' : 'exited'}
             label={`${runningCount}/${containers.length} containers`} />
-          <Button variant="outline" size="sm" onClick={refreshStatus} disabled={loadingStatus}>
+          <Button variant="outline" size="sm" onClick={() => { refreshStatus(); refreshStats(); }} disabled={loadingStatus}>
             <RefreshCw className={`h-3 w-3 mr-1.5 ${loadingStatus ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -143,55 +193,173 @@ export function WowDashboard() {
       {/* Terminal Output */}
       <TerminalOutput logs={logs} onClear={clearLogs} />
 
-      {/* Tabs */}
-      <Tabs defaultValue="status">
+      {/* Tabs — grouped: Monitor | Maintain | Manage | Ops */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-card">
-          <TabsTrigger value="status">Status</TabsTrigger>
+          {/* Monitor */}
+          <TabsTrigger value="status">
+            <MonitorCheck className="h-3 w-3 mr-1.5" />
+            Status
+          </TabsTrigger>
+          <TabsTrigger value="logs">
+            <ScrollText className="h-3 w-3 mr-1.5" />
+            Logs
+            {logAlertCount > 0 && (
+              <Badge className="ml-1.5 bg-red-500/20 text-red-400 text-xs px-1.5">
+                {logAlertCount}
+              </Badge>
+            )}
+          </TabsTrigger>
+
+          {/* Maintain */}
           <TabsTrigger value="updates">
-            Git Updates
+            <GitPullRequest className="h-3 w-3 mr-1.5" />
+            Updates
             {totalUpdates > 0 && (
               <Badge className="ml-1.5 bg-primary/20 text-primary text-xs px-1.5">
                 {totalUpdates}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="migrations">SQL Migrations</TabsTrigger>
-          <TabsTrigger value="modules">Modules</TabsTrigger>
+          <TabsTrigger value="migrations">
+            <Database className="h-3 w-3 mr-1.5" />
+            Migrations
+          </TabsTrigger>
+
+          {/* Manage */}
+          <TabsTrigger value="config">
+            <Settings2 className="h-3 w-3 mr-1.5" />
+            Config
+          </TabsTrigger>
+          <TabsTrigger value="database">
+            <TableProperties className="h-3 w-3 mr-1.5" />
+            Database
+          </TabsTrigger>
+          <TabsTrigger value="modules">
+            <Puzzle className="h-3 w-3 mr-1.5" />
+            Modules
+          </TabsTrigger>
+
+          {/* Ops */}
           <TabsTrigger value="backups">
             <Archive className="h-3 w-3 mr-1.5" />
             Backups
           </TabsTrigger>
+          <TabsTrigger value="activity">
+            <Activity className="h-3 w-3 mr-1.5" />
+            Activity
+          </TabsTrigger>
         </TabsList>
 
-        {/* Status Tab */}
+        {/* ===== Status Tab ===== */}
         <TabsContent value="status" className="space-y-4 mt-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {containers.map((c) => (
-              <Card key={c.name} className="bg-card/50">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-sm">{c.name}</span>
-                    <StatusBadge status={c.status} />
-                  </div>
-                  {c.startedAt && c.status === 'running' && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Since {new Date(c.startedAt).toLocaleString()}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+            <TooltipProvider>
+              {containers.map((c) => {
+                const st = stats[c.name];
+                const cpuPct = parseCpuPercent(st?.cpu);
+                const memPct = parseMemPercent(st?.memPercent);
+
+                return (
+                  <Card key={c.name} className="bg-card/50">
+                    <CardContent className="p-4 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-sm">{c.name}</span>
+                        <StatusBadge status={c.status} />
+                      </div>
+
+                      {c.startedAt && c.status === 'running' && (
+                        <p className="text-xs text-muted-foreground">
+                          Up since {new Date(c.startedAt).toLocaleString()}
+                        </p>
+                      )}
+
+                      {/* Resource bars */}
+                      {st && c.status === 'running' && (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-muted-foreground w-10">CPU</span>
+                            <Progress value={Math.min(cpuPct, 100)} className="flex-1 h-1.5" />
+                            <span className="text-muted-foreground w-12 text-right">{st.cpu}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-muted-foreground w-10">MEM</span>
+                            <Progress value={Math.min(memPct, 100)} className="flex-1 h-1.5" />
+                            <span className="text-muted-foreground w-12 text-right truncate">{st.memUsage?.split('/')[0]?.trim()}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-1 pt-0.5">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-xs px-2"
+                              onClick={() => viewContainerLogs(c.name)}
+                            >
+                              <ScrollText className="h-3 w-3 mr-1" />
+                              Logs
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>View container logs</TooltipContent>
+                        </Tooltip>
+
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-xs px-2"
+                              onClick={() => handleRestartContainer(c.name)}
+                              disabled={restarting[c.name]}
+                            >
+                              {restarting[c.name]
+                                ? <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                : <RotateCcw className="h-3 w-3 mr-1" />
+                              }
+                              Restart
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Restart this container</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </TooltipProvider>
             {containers.length === 0 && (
               <Card className="bg-card/50 col-span-3">
                 <CardContent className="p-4 text-center text-muted-foreground text-sm">
-                  {loadingStatus ? 'Loading...' : 'No containers found'}
+                  {loadingStatus ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading containers...
+                    </div>
+                  ) : 'No containers found'}
                 </CardContent>
               </Card>
             )}
           </div>
         </TabsContent>
 
-        {/* Git Updates Tab */}
+        {/* ===== Logs Tab ===== */}
+        <TabsContent value="logs" className="mt-4">
+          <ContainerLogs
+            containerLogs={containerLogs}
+            followingContainer={followingContainer}
+            sendLogs={sendLogs}
+            stopLogs={stopLogs}
+            clearContainerLogs={clearContainerLogs}
+            initialContainer={logsContainer}
+            onAlertCountChange={setLogAlertCount}
+          />
+        </TabsContent>
+
+        {/* ===== Updates Tab ===== */}
         <TabsContent value="updates" className="space-y-4 mt-4">
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={checkUpdates} disabled={checking}>
@@ -214,15 +382,32 @@ export function WowDashboard() {
                 pulling={pullingRepo[repo.id]}
               />
             ))}
+            {repos.length === 0 && !loadingStatus && (
+              <Card className="bg-card/50">
+                <CardContent className="p-4 text-center text-muted-foreground text-sm">
+                  No repositories found
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
-        {/* SQL Migrations Tab */}
+        {/* ===== Migrations Tab ===== */}
         <TabsContent value="migrations" className="mt-4">
           <SqlMigrations />
         </TabsContent>
 
-        {/* Modules Tab */}
+        {/* ===== Config Tab ===== */}
+        <TabsContent value="config" className="mt-4">
+          <ConfigEditor />
+        </TabsContent>
+
+        {/* ===== Database Tab ===== */}
+        <TabsContent value="database" className="mt-4">
+          <DatabaseExplorer />
+        </TabsContent>
+
+        {/* ===== Modules Tab ===== */}
         <TabsContent value="modules" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
@@ -259,16 +444,14 @@ export function WowDashboard() {
               <Card key={repo.id} className="bg-card/50">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
+                      <Puzzle className="h-4 w-4 text-muted-foreground" />
+                      <div>
                         <h3 className="font-medium text-sm">{repo.name || repo.id}</h3>
-                        <StatusBadge status="active" />
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                        <GitBranch className="h-3 w-3" />
-                        <span>{repo.branch}</span>
-                        <span className="text-border">|</span>
-                        <span className="truncate">{repo.remote}</span>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                          <GitBranch className="h-3 w-3" />
+                          <span>{repo.branch}</span>
+                        </div>
                       </div>
                     </div>
                     <Button
@@ -283,15 +466,26 @@ export function WowDashboard() {
                 </CardContent>
               </Card>
             ))}
+            {repos.filter(r => r.id !== 'core').length === 0 && (
+              <Card className="bg-card/50">
+                <CardContent className="p-4 text-center text-muted-foreground text-sm">
+                  No modules installed. Use the form above to add one.
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
-        {/* Backups Tab */}
+        {/* ===== Backups Tab ===== */}
         <TabsContent value="backups" className="mt-4">
           <BackupRestore onBackup={sendBackup} running={running} />
+        </TabsContent>
+
+        {/* ===== Activity Tab ===== */}
+        <TabsContent value="activity" className="mt-4">
+          <AuditLog />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
-

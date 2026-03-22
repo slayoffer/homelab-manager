@@ -43,9 +43,15 @@ export function getRepoStatus(repoPath) {
   const branch = runGit(repoPath, 'rev-parse --abbrev-ref HEAD');
   const commit = runGit(repoPath, 'rev-parse --short HEAD');
   const commitMessage = runGit(repoPath, 'log -1 --format=%s');
+  const commitDate = runGit(repoPath, 'log -1 --format=%ci');
   const remote = runGit(repoPath, 'remote get-url origin');
 
-  return { branch, commit, commitMessage, remote };
+  // Extract org/repo from remote URL
+  let repoLabel = remote;
+  const ghMatch = remote.match(/github\.com[:/](.+?)(?:\.git)?$/);
+  if (ghMatch) repoLabel = ghMatch[1];
+
+  return { branch, commit, commitMessage, commitDate, remote, repoLabel };
 }
 
 export function fetchRepo(repoPath) {
@@ -53,12 +59,19 @@ export function fetchRepo(repoPath) {
   const branch = runGit(repoPath, 'rev-parse --abbrev-ref HEAD');
   const behind = runGit(repoPath, `rev-list HEAD..origin/${branch} --count`);
   const ahead = runGit(repoPath, `rev-list origin/${branch}..HEAD --count`);
-  const newCommits = runGit(repoPath, `log HEAD..origin/${branch} --oneline`);
+  const newCommits = runGit(repoPath, `log HEAD..origin/${branch} --format=%h|%s|%cr`);
+  const latestRemoteCommit = runGit(repoPath, `log origin/${branch} -1 --format=%h`);
+  const latestRemoteDate = runGit(repoPath, `log origin/${branch} -1 --format=%ci`);
 
   return {
     behind: parseInt(behind) || 0,
     ahead: parseInt(ahead) || 0,
-    newCommits: newCommits ? newCommits.split('\n') : [],
+    newCommits: newCommits ? newCommits.split('\n').map(line => {
+      const [hash, message, age] = line.split('|');
+      return { hash, message, age };
+    }) : [],
+    latestRemoteCommit,
+    latestRemoteDate,
   };
 }
 

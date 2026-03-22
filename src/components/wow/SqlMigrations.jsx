@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useApi } from '@/hooks/useApi';
-import { Database, ChevronDown, ChevronRight, Play, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { Database, ChevronDown, ChevronRight, Play, Loader2, CheckCircle2, XCircle, Info } from 'lucide-react';
 
 export function SqlMigrations() {
   const { get, post } = useApi();
@@ -193,23 +194,41 @@ export function SqlMigrations() {
                     </Button>
                   </div>
 
-                  {mod.migrations.map((m) => (
-                    <label
-                      key={m.id}
-                      className="flex items-center gap-2 py-1 px-2 rounded hover:bg-accent/20 cursor-pointer text-sm"
-                    >
-                      <Checkbox
-                        checked={selected[m.id] || false}
-                        onCheckedChange={() => toggleMigration(m.id)}
-                      />
-                      <span className={`text-xs font-mono ${dbColors[m.database] || ''}`}>
-                        [{m.database}]
-                      </span>
-                      <span className="truncate flex-1 text-xs">{m.file}</span>
-                      {m.type === 'optional' && <StatusBadge status="optional" />}
-                      {m.isNew && <StatusBadge status="new" />}
-                    </label>
-                  ))}
+                  <TooltipProvider>
+                    {mod.migrations.map((m) => (
+                      <div key={m.id} className="space-y-0.5">
+                        <label
+                          className="flex items-center gap-2 py-1 px-2 rounded hover:bg-accent/20 cursor-pointer text-sm"
+                        >
+                          <Checkbox
+                            checked={selected[m.id] || false}
+                            onCheckedChange={() => toggleMigration(m.id)}
+                          />
+                          <span className={`text-xs font-mono ${dbColors[m.database] || ''}`}>
+                            [{m.database}]
+                          </span>
+                          <span className="truncate flex-1 text-xs">{m.file}</span>
+                          {m.description && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="max-w-sm">
+                                <p className="text-xs whitespace-pre-wrap">{m.description}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          {m.type === 'optional' && <StatusBadge status="optional" />}
+                          {m.isNew && <StatusBadge status="new" />}
+                        </label>
+                        {m.description && m.type === 'optional' && (
+                          <p className="text-[11px] text-muted-foreground/60 ml-8 pr-2 leading-relaxed">
+                            {m.description}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </TooltipProvider>
                 </div>
               </CollapsibleContent>
             </Collapsible>

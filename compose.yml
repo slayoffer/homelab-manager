@@ -1,0 +1,41 @@
+services:
+  homelab-manager:
+    build: .
+    container_name: homelab-manager
+    ports:
+      - "3456:3456"
+    volumes:
+      - /home/slayo/docker:/homelab/docker:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/slayo/docker/wow/azerothcore-wotlk:/wow
+      - ./data:/data
+      - /opt/backups/wow:/backups
+    environment:
+      - WOW_PATH=/wow
+      - WOW_COMPOSE_PATH=/wow
+      - STATE_PATH=/data/state.json
+      - DB_PATH=/data/homelab.db
+      - BACKUP_DIR=/backups
+      - PORT=3456
+      # GitHub OAuth (optional — auth disabled without these)
+      # Create your app at: https://github.com/settings/developers
+      # - GITHUB_OAUTH_CLIENT_ID=
+      # - GITHUB_OAUTH_CLIENT_SECRET=
+      # - GITHUB_OAUTH_REDIRECT_URI=https://your-domain/api/auth/github/callback
+      # - SESSION_SECRET=change-me-to-random-string
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.homelab.entrypoints=https"
+      - "traefik.http.routers.homelab.rule=Host(`homelab.devcraft.team`)"
+      - "traefik.http.routers.homelab.tls=true"
+      - "traefik.http.routers.homelab.tls.certresolver=cloudflare"
+      - "traefik.http.services.homelab.loadbalancer.server.port=3456"
+      - "traefik.http.routers.homelab.middlewares=default-whitelist@file"
+    networks:
+      proxy:
+    restart: unless-stopped
+
+networks:
+  proxy:
+    external: true
