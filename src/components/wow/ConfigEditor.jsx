@@ -24,6 +24,7 @@ export function ConfigEditor() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState(null);
   const [restarting, setRestarting] = useState(false);
   const [needsRestart, setNeedsRestart] = useState(false);
 
