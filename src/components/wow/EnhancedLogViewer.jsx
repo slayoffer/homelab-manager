@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Search, Filter, Regex, Clock, ArrowDown, Pause, Play,
-  Copy, Trash2, Download, X,
+  Copy, Trash2, Download, X, Maximize2, Minimize2,
 } from 'lucide-react';
 
 const CONTAINER_COLORS = {
@@ -104,9 +104,18 @@ export function EnhancedLogViewer({ entries, onClear, alertChecker }) {
   const [paused, setPaused] = useState(false);
   const [pausedBuffer, setPausedBuffer] = useState([]);
   const [atBottom, setAtBottom] = useState(true);
+  const [fullscreen, setFullscreen] = useState(false);
 
   const scrollRef = useRef(null);
   const bottomRef = useRef(null);
+
+  // Escape exits fullscreen
+  useEffect(() => {
+    if (!fullscreen) return;
+    const handleKey = (e) => { if (e.key === 'Escape') setFullscreen(false); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [fullscreen]);
 
   // Debounce search
   useEffect(() => {
@@ -212,9 +221,11 @@ export function EnhancedLogViewer({ entries, onClear, alertChecker }) {
   if (entries.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-[#0a0e1a] flex flex-col">
+    <div className={`rounded-lg border border-border bg-[#0a0e1a] flex flex-col ${
+      fullscreen ? 'fixed inset-0 z-50 rounded-none' : ''
+    }`}>
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border flex-wrap">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border flex-wrap shrink-0">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
           <Input
@@ -296,11 +307,23 @@ export function EnhancedLogViewer({ entries, onClear, alertChecker }) {
               <Trash2 className="h-3 w-3" />
             </Button>
           )}
+          <div className="h-4 w-px bg-border" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setFullscreen(!fullscreen)}
+            title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+          >
+            {fullscreen ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+          </Button>
         </div>
       </div>
 
       {/* Log Area */}
-      <div ref={scrollRef} className="overflow-y-auto min-h-[400px] max-h-[calc(100vh-500px)] font-mono text-xs relative">
+      <div ref={scrollRef} className={`overflow-y-auto font-mono text-xs relative ${
+        fullscreen ? 'flex-1' : 'min-h-[400px] max-h-[calc(100vh-300px)]'
+      }`}>
         {filteredEntries.map(entry => (
           <LogLine
             key={entry.id}

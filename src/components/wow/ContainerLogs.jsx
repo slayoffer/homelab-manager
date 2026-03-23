@@ -9,7 +9,7 @@ import { EnhancedLogViewer } from './EnhancedLogViewer';
 import { useApi } from '@/hooks/useApi';
 import { useLogAlerts } from '@/hooks/useLogAlerts';
 import {
-  ScrollText, Play, Square, Loader2, Bell, BellOff,
+  ScrollText, Play, Pause, Loader2, Bell, BellOff,
   ChevronDown, ChevronRight, Plus, Trash2, Regex,
 } from 'lucide-react';
 
@@ -45,6 +45,10 @@ export function ContainerLogs({
   useEffect(() => {
     if (initialContainer && initialContainer !== container) {
       setContainer(initialContainer);
+      // Auto-start following when navigating from Logs button
+      setStaticEntries([]);
+      resetAlertCount();
+      sendLogs(initialContainer, { tail, follow: true });
     }
   }, [initialContainer]);
 
@@ -155,9 +159,11 @@ export function ContainerLogs({
         )}
 
         {isFollowing ? (
-          <Button variant="destructive" size="sm" onClick={handleStop}>
-            <Square className="h-3.5 w-3.5 mr-1.5" />
-            Stop Following
+          <Button variant="outline" size="sm" onClick={handleStop}
+            className="text-amber-400 border-amber-400/30 hover:bg-amber-400/10"
+          >
+            <Pause className="h-3.5 w-3.5 mr-1.5" />
+            Pause
           </Button>
         ) : (
           <Button
@@ -167,7 +173,7 @@ export function ContainerLogs({
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             <Play className="h-3.5 w-3.5 mr-1.5" />
-            Follow Live
+            Continue
           </Button>
         )}
 

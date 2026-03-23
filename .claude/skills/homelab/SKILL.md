@@ -47,6 +47,17 @@ ssh slayo "docker ps --filter name=homelab-manager --format '{{.Status}}'"
 
 App is live at `http://slayo:3456`.
 
+### Infrastructure Notes
+
+The container mounts the host's Docker socket but uses its own `docker` binary (`docker.io` apt package). This binary does **not** include the `docker compose` plugin. The host's compose plugin must be mounted as a volume in `compose.yml`:
+
+```yaml
+volumes:
+  - /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins:ro
+```
+
+Without this, all docker compose operations (Quick Start, Stop Server, Rebuild) will fail with `unknown shorthand flag: 'd' in -d`.
+
 ## Add Workspace
 
 Scaffolds a new workspace across backend and frontend. A workspace is a self-contained section of the app (like WoW Server, Docker Services, etc.).
