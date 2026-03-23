@@ -162,3 +162,35 @@ export function restartContainer(containerName) {
     return { success: false, error: err.message };
   }
 }
+
+export function startContainer(containerName) {
+  validateContainer(containerName);
+  db.prepare('INSERT INTO docker_operations (action, container) VALUES (?, ?)').run('start', containerName);
+  try {
+    const output = execSync(
+      `docker start ${containerName}`,
+      { encoding: 'utf-8', timeout: 30000 }
+    );
+    audit('docker.start', containerName, { output: output.trim() });
+    return { success: true, output: output.trim() };
+  } catch (err) {
+    audit('docker.start', containerName, { error: err.message }, 'failed');
+    return { success: false, error: err.message };
+  }
+}
+
+export function stopContainer(containerName) {
+  validateContainer(containerName);
+  db.prepare('INSERT INTO docker_operations (action, container) VALUES (?, ?)').run('stop', containerName);
+  try {
+    const output = execSync(
+      `docker stop ${containerName}`,
+      { encoding: 'utf-8', timeout: 30000 }
+    );
+    audit('docker.stop', containerName, { output: output.trim() });
+    return { success: true, output: output.trim() };
+  } catch (err) {
+    audit('docker.stop', containerName, { error: err.message }, 'failed');
+    return { success: false, error: err.message };
+  }
+}

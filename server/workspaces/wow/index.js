@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { WorkspaceBase } from '../base.js';
 import { getAllRepos, getRepoStatus, fetchRepo, pullRepo, cloneModule, removeModule } from './git.js';
 import { scanMigrations, applySqlFile, saveSqlPreferences, markMigrationsApplied } from './sql.js';
-import { getContainerStatus, dockerComposeAction, containerStats, restartContainer, getContainerLogs } from './docker.js';
+import { getContainerStatus, dockerComposeAction, containerStats, restartContainer, startContainer, stopContainer, getContainerLogs } from './docker.js';
 import { listBackups, backupDirectory, backupDatabase, backupVolumes, restoreDatabase, restoreDirectory, pruneBackups } from './backup.js';
 import { listDatabases, listTables, describeTable, queryTable, updateRow } from './database.js';
 import { listConfigFiles, readConfig, diffConfig, saveConfig, mergeNewSettings, getConfigHistory, rollbackConfig } from './configs.js';
@@ -77,6 +77,24 @@ export class WowWorkspace extends WorkspaceBase {
     router.post('/containers/:name/restart', (req, res) => {
       try {
         res.json(restartContainer(req.params.name));
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    // Start individual container
+    router.post('/containers/:name/start', (req, res) => {
+      try {
+        res.json(startContainer(req.params.name));
+      } catch (err) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    // Stop individual container
+    router.post('/containers/:name/stop', (req, res) => {
+      try {
+        res.json(stopContainer(req.params.name));
       } catch (err) {
         res.status(400).json({ error: err.message });
       }

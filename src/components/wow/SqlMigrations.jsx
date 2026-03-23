@@ -7,7 +7,9 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useApi } from '@/hooks/useApi';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
-import { Database, ChevronDown, ChevronRight, Play, Loader2, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { Database, ChevronDown, ChevronRight, Play, Square, Loader2, CheckCircle2, XCircle, Info, CircleDot } from 'lucide-react';
+
+const DB_CONTAINER = 'ac-database';
 
 export function SqlMigrations() {
   const { get, post } = useApi();
@@ -17,6 +19,16 @@ export function SqlMigrations() {
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
   const [results, setResults] = useState(null);
+  const [dbStatus, setDbStatus] = useState(null); // 'running' | 'exited' | 'not_found' | null
+  const [dbAction, setDbAction] = useState(null); // 'starting' | 'stopping' | null
+
+  const refreshDbStatus = useCallback(async () => {
+    const containers = await get('/workspaces/wow/containers');
+    if (Array.isArray(containers)) {
+      const db = containers.find(c => c.name === DB_CONTAINER);
+      setDbStatus(db?.status || 'not_found');
+    }
+  }, [get]);
 
   const loadMigrations = useCallback(async () => {
     setLoading(true);
@@ -34,7 +46,20 @@ export function SqlMigrations() {
     setLoading(false);
   }, [get]);
 
-  useEffect(() => { loadMigrations(); }, [loadMigrations]);
+  useEffect(() => {
+    loadMigrations();
+    refreshDbStatus();
+  }, [loadMigrations, refreshDbStatus]);
+
+  const handleDbAction = async (action) => {
+    setDbAction(action === 'start' ? 'starting' : 'stopping');
+    await post(`/workspaces/wow/containers/${DB_CONTAINER}/${action}`);
+    // Brief delay for container state to settle
+    setTimeout(async () => {
+      await refreshDbStatus();
+      setDbAction(null);
+    }, 1500);
+  };
 
   const toggleMigration = (id) => {
     setSelected(prev => ({ ...prev, [id]: !prev[id] }));
@@ -93,6 +118,7 @@ export function SqlMigrations() {
 
   const selectedCount = Object.values(selected).filter(Boolean).length;
   const totalCount = modules.reduce((acc, m) => acc + m.migrations.length, 0);
+  const dbRunning = dbStatus === 'running';
 
   const dbColors = {
     world: 'text-emerald-400',
@@ -112,7 +138,35 @@ export function SqlMigrations() {
               {selectedCount}/{totalCount}
             </Badge>
           </CardTitle>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {/* DB status indicator + control */}
+            <div className="flex items-center gap-1.5 mr-1">
+              <CircleDot className={`h-3.5 w-3.5 ${dbRunning ? 'text-emerald-400' : 'text-red-400'}`} />
+              <span className="text-xs text-muted-foreground">DB</span>
+            </div>
+            {dbRunning ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDbAction('stop')}
+                disabled={!!dbAction}
+                className="text-red-400 border-red-400/30 hover:bg-red-400/10"
+              >
+                {dbAction === 'stopping' ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Square className="h-3 w-3 mr-1.5" />}
+                Stop DB
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDbAction('start')}
+                disabled={!!dbAction || dbStatus === null}
+                className="text-emerald-400 border-emerald-400/30 hover:bg-emerald-400/10"
+              >
+                {dbAction === 'starting' ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Play className="h-3 w-3 mr-1.5" />}
+                Start DB
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={loadMigrations} disabled={loading}>
               {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : null}
               Refresh
@@ -120,7 +174,7 @@ export function SqlMigrations() {
             <Button
               size="sm"
               onClick={applySelected}
-              disabled={applying || !selectedCount}
+              disabled={applying || !selectedCount || !dbRunning}
               className="bg-primary text-primary-foreground"
             >
               {applying ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Play className="h-3 w-3 mr-1.5" />}
@@ -130,6 +184,12 @@ export function SqlMigrations() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {!dbRunning && dbStatus && (
+          <div className="rounded-lg border border-amber-400/30 bg-amber-400/5 p-3 text-sm text-amber-400">
+            Database container is not running. Start it before applying migrations.
+          </div>
+        )}
+
         {results && (
           <div className="rounded-lg border border-border p-3 space-y-1">
             <p className="text-sm font-medium mb-2">Results:</p>
