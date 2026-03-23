@@ -1,0 +1,46 @@
+name: CI & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Lint & Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+  deploy:
+    name: Deploy to slayo
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync files to deploy path
+        run: |
+          rsync -avz --delete \
+            --exclude node_modules \
+            --exclude dist \
+            --exclude .git \
+            --exclude data \
+            --exclude .env \
+            --exclude compose.yml \
+            . /home/slayo/docker/homelab-manager/
+
+      - name: Rebuild and restart container
+        run: |
+          cd /home/slayo/docker/homelab-manager
+          docker compose up -d --build
