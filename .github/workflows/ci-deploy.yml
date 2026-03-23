@@ -29,18 +29,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Sync files to deploy path
+      - name: Sync and rebuild
         run: |
-          rsync -avz --delete \
-            --exclude node_modules \
-            --exclude dist \
-            --exclude .git \
-            --exclude data \
-            --exclude .env \
-            --exclude compose.yml \
-            . /home/slayo/docker/homelab-manager/
+          DEPLOY_PATH="/home/slayo/docker/homelab-manager"
 
-      - name: Rebuild and restart container
-        run: |
-          cd /home/slayo/docker/homelab-manager
+          # Copy source files (preserve compose.yml with secrets)
+          cp -r server "$DEPLOY_PATH/"
+          cp -r src "$DEPLOY_PATH/"
+          cp package.json package-lock.json Dockerfile "$DEPLOY_PATH/"
+          cp -r .github "$DEPLOY_PATH/" 2>/dev/null || true
+
+          # Rebuild container
+          cd "$DEPLOY_PATH"
           docker compose up -d --build
