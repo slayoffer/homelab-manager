@@ -28,7 +28,7 @@ export function dockerComposeAction(action, ws) {
 
   switch (action) {
     case 'start':
-      args = ['compose', 'up', '-d'];
+      args = ['compose', 'up', '-d', '--force-recreate', '--remove-orphans'];
       break;
     case 'stop':
       args = ['compose', 'down'];

@@ -7,8 +7,10 @@ import { ConfigFileBrowser } from './ConfigFileBrowser';
 import { ConfigSettingsView } from './ConfigSettingsView';
 import { ConfigRawEditor } from './ConfigRawEditor';
 import { useApi } from '@/hooks/useApi';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Save, RotateCcw, FileText, Settings2, Loader2, Check, AlertTriangle,
+  History, ChevronDown, ChevronRight, Undo2,
 } from 'lucide-react';
 
 export function ConfigEditor() {
@@ -27,6 +29,9 @@ export function ConfigEditor() {
   const [saveError, setSaveError] = useState(null);
   const [restarting, setRestarting] = useState(false);
   const [needsRestart, setNeedsRestart] = useState(false);
+  const [snapshots, setSnapshots] = useState([]);
+  const [snapshotsOpen, setSnapshotsOpen] = useState(false);
+  const [restoringId, setRestoringId] = useState(null);
 
   // Load diff summaries for all files on mount
   useEffect(() => {
@@ -71,6 +76,7 @@ export function ConfigEditor() {
     if (isDirty && !confirm('You have unsaved changes. Discard?')) return;
     setSelectedFile(relativePath);
     loadFile(relativePath);
+    loadSnapshots(relativePath);
   };
 
   const handleEditValue = (key, value) => {
@@ -128,6 +134,7 @@ export function ConfigEditor() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     const content = buildSaveContent();
     const result = await post('/workspaces/wow/configs/save', {
       path: selectedFile,
@@ -146,7 +153,11 @@ export function ConfigEditor() {
         setDiffData(diff);
         setDiffSummaries(prev => ({ ...prev, [selectedFile]: diff.summary }));
       }
+      await loadSnapshots(selectedFile);
       setTimeout(() => setSaved(false), 3000);
+    } else {
+      setSaveError(result?.error || 'Save failed');
+      setTimeout(() => setSaveError(null), 5000);
     }
     setSaving(false);
   };
@@ -163,6 +174,24 @@ export function ConfigEditor() {
       if (diff?.summary) setDiffSummaries(prev => ({ ...prev, [selectedFile]: diff.summary }));
     }
     setSaving(false);
+  };
+
+  const loadSnapshots = useCallback(async (filePath) => {
+    const data = await get(`/workspaces/wow/configs/history?path=${encodeURIComponent(filePath)}`);
+    if (Array.isArray(data)) setSnapshots(data);
+    else setSnapshots([]);
+  }, [get]);
+
+  const handleRestore = async (snapshotId) => {
+    if (!confirm('Restore this snapshot? Current content will be saved as a new snapshot first.')) return;
+    setRestoringId(snapshotId);
+    const result = await post('/workspaces/wow/configs/rollback', { snapshotId });
+    if (result?.success) {
+      await loadFile(selectedFile);
+      await loadSnapshots(selectedFile);
+      setNeedsRestart(true);
+    }
+    setRestoringId(null);
   };
 
   const handleRestart = async () => {
@@ -270,12 +299,61 @@ export function ConfigEditor() {
               </div>
             </div>
 
+            {/* Save error */}
+            {saveError && (
+              <div className="flex items-center gap-2 text-xs text-red-400 bg-red-400/10 border border-red-400/30 rounded-lg px-3 py-2">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                Save failed: {saveError}
+              </div>
+            )}
+
             {/* Unsaved warning */}
-            {isDirty && (
+            {isDirty && !saveError && (
               <div className="flex items-center gap-2 text-xs text-amber-400">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 Unsaved changes
               </div>
+            )}
+
+            {/* Snapshots */}
+            {snapshots.length > 0 && (
+              <Collapsible open={snapshotsOpen} onOpenChange={setSnapshotsOpen}>
+                <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  {snapshotsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  <History className="h-3 w-3" />
+                  Snapshots ({snapshots.length})
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2">
+                  <div className="rounded-lg border border-border p-2 space-y-1 max-h-48 overflow-y-auto">
+                    {snapshots.map((snap) => (
+                      <div key={snap.id} className="flex items-center justify-between gap-3 px-2 py-1.5 rounded hover:bg-accent/20 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-muted-foreground shrink-0">
+                            {new Date(snap.saved_at + 'Z').toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
+                          </span>
+                          <span className="text-muted-foreground/60">
+                            {(snap.size / 1024).toFixed(1)}KB
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-[11px] shrink-0"
+                          onClick={() => handleRestore(snap.id)}
+                          disabled={restoringId === snap.id}
+                        >
+                          {restoringId === snap.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          ) : (
+                            <Undo2 className="h-3 w-3 mr-1" />
+                          )}
+                          Restore
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             )}
 
             {/* Content */}

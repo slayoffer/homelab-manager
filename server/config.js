@@ -27,6 +27,7 @@ const config = {
     redirectUri: process.env.GITHUB_OAUTH_REDIRECT_URI || `http://localhost:${parseInt(process.env.PORT || '3456')}/api/auth/github/callback`,
     sessionSecret: process.env.SESSION_SECRET || 'homelab-dev-secret-change-me',
     sessionExpiryDays: 30,
+    allowedUsers: process.env.GITHUB_ALLOWED_USERS ? process.env.GITHUB_ALLOWED_USERS.split(',').map(u => u.trim().toLowerCase()) : [],
   },
 };
 

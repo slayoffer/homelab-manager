@@ -195,6 +195,12 @@ export function registerAuthRoutes(app) {
 
       const accessToken = await exchangeCode(code);
       const ghUser = await fetchGitHubUser(accessToken);
+
+      // Check allowlist if configured
+      if (config.oauth.allowedUsers.length > 0 && !config.oauth.allowedUsers.includes(ghUser.login.toLowerCase())) {
+        return res.status(403).send(`Access denied. User "${ghUser.login}" is not in the allowed users list.`);
+      }
+
       const userId = createOrUpdateUser(ghUser);
       const { token, maxAge } = createSession(userId);
 
