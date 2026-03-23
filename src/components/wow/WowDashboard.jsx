@@ -20,7 +20,7 @@ import {
   Sword, Play, Square, Hammer, RefreshCw, Download,
   Loader2, GitBranch, Plus, Trash2, Archive, Settings2, Activity,
   ScrollText, RotateCcw, MonitorCheck, GitPullRequest, Puzzle,
-  TableProperties, Database,
+  TableProperties, Database, AlertTriangle, X,
 } from 'lucide-react';
 
 function parseCpuPercent(str) {
@@ -47,6 +47,7 @@ export function WowDashboard() {
   const [checking, setChecking] = useState(false);
   const [pullingAll, setPullingAll] = useState(false);
   const [pullingRepo, setPullingRepo] = useState({});
+  const [needsRebuild, setNeedsRebuild] = useState(false);
   const [newModuleUrl, setNewModuleUrl] = useState('');
   const [newModuleName, setNewModuleName] = useState('');
   const [installing, setInstalling] = useState(false);
@@ -92,6 +93,7 @@ export function WowDashboard() {
     setPullingAll(true);
     await post('/workspaces/wow/repos/pull');
     setUpdates(null);
+    setNeedsRebuild(true);
     await refreshStatus();
     setPullingAll(false);
   };
@@ -99,6 +101,7 @@ export function WowDashboard() {
   const pullSingle = async (repoId) => {
     setPullingRepo(prev => ({ ...prev, [repoId]: true }));
     await post(`/workspaces/wow/repos/${repoId}/pull`);
+    setNeedsRebuild(true);
     await refreshStatus();
     setPullingRepo(prev => ({ ...prev, [repoId]: false }));
   };
@@ -182,7 +185,7 @@ export function WowDashboard() {
         </Button>
         <Button
           variant="outline"
-          onClick={() => sendAction('rebuild')}
+          onClick={() => { sendAction('rebuild'); setNeedsRebuild(false); }}
           disabled={running}
         >
           <Hammer className="h-4 w-4 mr-2" />
@@ -361,6 +364,35 @@ export function WowDashboard() {
 
         {/* ===== Updates Tab ===== */}
         <TabsContent value="updates" className="space-y-4 mt-4">
+          {needsRebuild && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-400/30 bg-amber-400/5 px-4 py-3">
+              <div className="flex items-center gap-2 text-sm text-amber-400">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                Repos updated — rebuild the Docker image to apply changes
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  size="sm"
+                  onClick={() => { sendAction('rebuild'); setNeedsRebuild(false); }}
+                  disabled={running}
+                  className="bg-amber-500 hover:bg-amber-600 text-black"
+                >
+                  <Hammer className="h-3 w-3 mr-1.5" />
+                  Rebuild & Restart
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-amber-400/60 hover:text-amber-400"
+                  onClick={() => setNeedsRebuild(false)}
+                  title="Dismiss"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={checkUpdates} disabled={checking}>
               {checking ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <RefreshCw className="h-3 w-3 mr-1.5" />}
