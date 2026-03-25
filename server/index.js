@@ -11,6 +11,7 @@ import { DockerServicesWorkspace } from './workspaces/docker-services/index.js';
 import { ProxmoxWorkspace } from './workspaces/proxmox/index.js';
 import { TraefikWorkspace } from './workspaces/traefik/index.js';
 import { ServersWorkspace } from './workspaces/servers/index.js';
+import { AiAssistantWorkspace, aiStreams } from './workspaces/ai-assistant/index.js';
 import { dockerComposeAction, containerLogs, containerLogsAll } from './workspaces/wow/docker.js';
 import { backupDirectory, backupDatabase, backupVolumes } from './workspaces/wow/backup.js';
 
@@ -18,6 +19,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const server = createServer(app);
 
+app.use('/api/workspaces/ai-assistant/chat', express.json({ limit: '10mb' }));
 app.use(express.json({ limit: '1mb' }));
 
 // Auth routes (public — no middleware)
@@ -30,6 +32,7 @@ const workspaces = [
   new ProxmoxWorkspace(),
   new TraefikWorkspace(),
   new ServersWorkspace(),
+  new AiAssistantWorkspace(),
 ];
 
 // Protect workspace routes with auth (skipped if auth not configured)
@@ -69,11 +72,15 @@ wss.on('connection', (ws, req) => {
       for (const proc of ws._logProcs.values()) proc.kill();
       ws._logProcs = null;
     }
+    // Clean up AI stream subscriptions for this connection
+    for (const [key, conn] of aiStreams) {
+      if (conn === ws) aiStreams.delete(key);
+    }
   });
 
   ws.on('message', (msg) => {
     try {
-      const { type, action, container, tail, follow } = JSON.parse(msg);
+      const { type, action, container, tail, follow, requestId } = JSON.parse(msg);
       if (type === 'docker') {
         dockerComposeAction(action, ws);
       } else if (type === 'logs') {
@@ -98,6 +105,10 @@ wss.on('connection', (ws, req) => {
             break;
           default:
             ws.send(JSON.stringify({ type: 'error', data: `Unknown backup action: ${action}` }));
+        }
+      } else if (type === 'ai') {
+        if (action === 'subscribe' && requestId) {
+          aiStreams.set(requestId, ws);
         }
       }
     } catch (err) {

@@ -21,6 +21,11 @@ const config = {
   },
   statePath: process.env.STATE_PATH || path.join(__dirname, '..', 'data', 'state.json'),
   dbPath: process.env.DB_PATH || path.join(__dirname, '..', 'data', 'homelab.db'),
+  openClaw: {
+    gatewayUrl: process.env.OPENCLAW_GATEWAY_URL || 'http://openclaw:18789',
+    token: process.env.OPENCLAW_GATEWAY_TOKEN || '',
+    defaultModel: process.env.OPENCLAW_MODEL || 'openai/gpt-5.4',
+  },
   oauth: {
     clientId: process.env.GITHUB_OAUTH_CLIENT_ID || '',
     clientSecret: process.env.GITHUB_OAUTH_CLIENT_SECRET || '',

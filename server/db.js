@@ -107,6 +107,26 @@ const MIGRATIONS = [
     created_at TEXT DEFAULT (datetime('now')),
     expires_at TEXT NOT NULL
   );`,
+
+  // Migration 3: AI Assistant
+  `CREATE TABLE IF NOT EXISTS ai_sessions (
+    id TEXT PRIMARY KEY,
+    title TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS ai_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL REFERENCES ai_sessions(id) ON DELETE CASCADE,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    attachments TEXT,
+    model TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_ai_messages_session ON ai_messages(session_id);`,
 ];
 
 function runMigrations() {

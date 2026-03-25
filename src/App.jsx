@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { WowDashboard } from '@/components/wow/WowDashboard';
 import { WorkspaceStub } from '@/components/stubs/WorkspaceStub';
+import { AiAssistantDashboard } from '@/components/ai-assistant/AiAssistantDashboard';
 import { LoginPage } from '@/components/auth/LoginPage';
 import { useApi } from '@/hooks/useApi';
 import { Loader2 } from 'lucide-react';
@@ -57,6 +58,7 @@ function AppContent() {
   const renderWorkspace = () => {
     if (!activeWorkspace) return null;
     if (activeWorkspace.id === 'wow') return <WowDashboard />;
+    if (activeWorkspace.id === 'ai-assistant') return <AiAssistantDashboard />;
     return <WorkspaceStub workspace={activeWorkspace} />;
   };
 
