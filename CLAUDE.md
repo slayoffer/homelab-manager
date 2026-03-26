@@ -6,18 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Full-stack web app for managing a self-hosted AzerothCore WotLK server and other homelab services. React 19 + Vite + shadcn/ui frontend, Express.js + WebSocket backend, deployed as a Docker container on `slayo` server (192.168.1.99).
 
-**Live at**: `http://192.168.1.99:3456` (or `http://slayo:3456`)
+**Live at**: `https://homelab.devcraft.team` (Traefik reverse proxy with TLS)
 
 ## Architecture
 
-Workspace-based modular system. Each workspace manages a different part of the homelab. WoW is fully implemented; others are stubs.
+Workspace-based modular system. Each workspace manages a different part of the homelab. WoW is fully implemented; AI Assistant connects to OpenClaw gateway; others are stubs.
 
 ```
 homelab-manager/
 ├── server/                          # Express.js backend (ES modules)
 │   ├── index.js                     # HTTP + WebSocket server, route registration
-│   ├── config.js                    # Env-based config (paths, DB creds, ports)
-│   ├── state.js                     # JSON file persistence (preferences, commits)
+│   ├── config.js                    # Env-based config (paths, DB creds, ports, OAuth, OpenClaw)
+│   ├── db.js                        # SQLite (better-sqlite3) with schema migrations
+│   ├── auth.js                      # GitHub OAuth, session management, middleware
 │   └── workspaces/
 │       ├── base.js                  # WorkspaceBase class (id, name, icon, status, getRoutes)
 │       ├── wow/
@@ -26,6 +27,7 @@ homelab-manager/
 │       │   ├── sql.js               # scanMigrations, applySqlFile, saveSqlPreferences
 │       │   ├── docker.js            # getContainerStatus, dockerComposeAction (WebSocket streaming)
 │       │   └── backup.js            # listBackups, backupDirectory/Database/Volumes, restore, prune
+│       ├── ai-assistant/index.js     # OpenClaw gateway proxy (chat, sessions, streaming)
 │       ├── docker-services/index.js # Stub
 │       ├── proxmox/index.js         # Stub
 │       ├── traefik/index.js         # Stub
@@ -56,8 +58,11 @@ homelab-manager/
 ## Tech Stack
 
 - **Frontend**: React 19, Vite 8, Tailwind CSS v4, shadcn/ui, Lucide icons
-- **Backend**: Express 5 (ES modules), ws (WebSocket), child_process for git/docker/mysql
+- **Backend**: Express 5 (ES modules), ws (WebSocket), better-sqlite3, child_process for git/docker/mysql
+- **Database**: SQLite via better-sqlite3 (WAL mode) at `/data/homelab.db`
+- **Auth**: Optional GitHub OAuth (self-configured per deployment), HTTP-only cookie sessions
 - **Container**: node:20-slim with git, docker.io, openssh-client, bash
+- **CI/CD**: GitHub Actions — lint+build on PRs, auto-deploy on push to main via self-hosted runner on slayo
 - **UI theme**: Always-dark, oklch colors, gold primary (#f59e0b), slate background
 
 ## API Reference
@@ -124,7 +129,11 @@ volumes:
   - /opt/backups/wow:/backups                  # Backup storage
 ```
 
-Environment variables: `WOW_PATH=/wow`, `WOW_COMPOSE_PATH=/wow`, `STATE_PATH=/data/state.json`, `BACKUP_DIR=/backups`, `PORT=3456`
+Environment variables: `WOW_PATH=/wow`, `WOW_COMPOSE_PATH=/wow`, `STATE_PATH=/data/state.json`, `DB_PATH=/data/homelab.db`, `BACKUP_DIR=/backups`, `PORT=3456`
+
+Optional auth env vars: `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`, `GITHUB_OAUTH_REDIRECT_URI`, `SESSION_SECRET`, `GITHUB_ALLOWED_USERS`
+
+Optional AI env vars: `OPENCLAW_GATEWAY_URL`, `OPENCLAW_GATEWAY_TOKEN`, `OPENCLAW_MODEL`
 
 ### Deploy workflow
 ```bash
@@ -175,7 +184,7 @@ The WoW server is AzerothCore WotLK at `/home/slayo/docker/wow/azerothcore-wotlk
 
 - Express 5 syntax: use `/{*path}` not `*` for catch-all routes
 - shadcn/ui components in `src/components/ui/` — install with `npx shadcn@latest add <component>` (style: base-nova, JSX not TSX)
-- State persisted in `/data/state.json` (JSON file, not a database)
+- State persisted in SQLite at `/data/homelab.db` (migrated from JSON, schema versioned)
 - All git/docker/mysql operations run via child_process (execSync or spawn)
 - `git config --global --add safe.directory '*'` set in Dockerfile for mounted volumes
 - WebSocket used for long-running ops (docker build, backups); REST for quick queries
