@@ -50,7 +50,7 @@ export function ChatMessage({ message, isStreaming }) {
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
       {/* Avatar */}
-      <div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${
+      <div className={`shrink-0 w-8 h-8 md:w-7 md:h-7 rounded-full flex items-center justify-center ${
         isUser ? 'bg-primary/20' : 'bg-emerald-500/20'
       }`}>
         {isUser
@@ -60,7 +60,7 @@ export function ChatMessage({ message, isStreaming }) {
       </div>
 
       {/* Content */}
-      <div className={`max-w-[80%] min-w-0 ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`max-w-[92%] md:max-w-[80%] min-w-0 ${isUser ? 'items-end' : 'items-start'}`}>
         <div className={`rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
           isUser
             ? 'bg-primary/15 text-foreground'
@@ -90,7 +90,7 @@ export function ChatMessage({ message, isStreaming }) {
         </div>
 
         {/* Timestamp */}
-        <p className={`text-[10px] text-muted-foreground/50 mt-1 ${isUser ? 'text-right' : ''}`}>
+        <p className={`text-[11px] md:text-[10px] text-muted-foreground/50 mt-1 ${isUser ? 'text-right' : ''}`}>
           {formatTime(message.created_at)}
           {message.model && <span className="ml-1.5">{message.model}</span>}
         </p>

@@ -90,16 +90,16 @@ export function ChatInput({ onSend, disabled }) {
   };
 
   return (
-    <div className="border-t border-border bg-card/50 p-3 space-y-2">
+    <div className="border-t border-border bg-card/50 p-2 md:p-3 space-y-2">
       {/* Attachment previews */}
       {attachments.length > 0 && (
         <div className="flex gap-2 flex-wrap">
           {attachments.map((att, i) => (
             <div key={i} className="relative group">
-              <img src={att.preview} alt={att.fileName} className="w-16 h-16 rounded-lg object-cover border border-border" />
+              <img src={att.preview} alt={att.fileName} className="w-14 h-14 md:w-16 md:h-16 rounded-lg object-cover border border-border" />
               <button
                 onClick={() => removeAttachment(i)}
-                className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-5 h-5 md:w-4 md:h-4 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
               >
                 <X className="h-2.5 w-2.5" />
               </button>
@@ -121,12 +121,12 @@ export function ChatInput({ onSend, disabled }) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 shrink-0"
+          className="h-11 w-11 md:h-9 md:w-9 shrink-0"
           onClick={() => fileRef.current?.click()}
           disabled={disabled}
           title="Attach image"
         >
-          <ImagePlus className="h-4 w-4" />
+          <ImagePlus className="h-5 w-5 md:h-4 md:w-4" />
         </Button>
 
         <Textarea
@@ -135,19 +135,19 @@ export function ChatInput({ onSend, disabled }) {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          placeholder="Type a message... (Enter to send, Shift+Enter for newline, paste screenshots)"
+          placeholder="Type a message..."
           disabled={disabled}
-          className="min-h-[40px] max-h-[200px] resize-none text-sm bg-background"
+          className="min-h-[44px] max-h-[200px] resize-none text-base md:text-sm bg-background"
           rows={1}
         />
 
         <Button
           size="icon"
-          className="h-9 w-9 shrink-0 bg-primary text-primary-foreground"
+          className="h-11 w-11 md:h-9 md:w-9 shrink-0 bg-primary text-primary-foreground"
           onClick={handleSend}
           disabled={disabled || (!text.trim() && attachments.length === 0)}
         >
-          {disabled ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          {disabled ? <Loader2 className="h-5 w-5 md:h-4 md:w-4 animate-spin" /> : <Send className="h-5 w-5 md:h-4 md:w-4" />}
         </Button>
       </div>
     </div>

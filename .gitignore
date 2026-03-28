@@ -26,6 +26,9 @@ dist-ssr
 # MCP config (contains tokens)
 .mcp.json
 
+# Claude local settings
+.claude/settings.local.json
+
 # Slack/MCP cache
 .channels_cache_v2.json
 .users_cache.json
