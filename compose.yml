@@ -28,11 +28,11 @@ services:
       - SYNTHIQ_MODEL=${SYNTHIQ_MODEL:-openai/gpt-5.4}
       - SYNTHIQ_SYSTEM_PROMPT=${SYNTHIQ_SYSTEM_PROMPT:-}
       # GitHub OAuth (optional — auth disabled without these)
-      # Create your app at: https://github.com/settings/developers
-      # - GITHUB_OAUTH_CLIENT_ID=
-      # - GITHUB_OAUTH_CLIENT_SECRET=
-      # - GITHUB_OAUTH_REDIRECT_URI=https://your-domain/api/auth/github/callback
-      # - SESSION_SECRET=change-me-to-random-string
+      - GITHUB_OAUTH_CLIENT_ID=${GITHUB_OAUTH_CLIENT_ID:-}
+      - GITHUB_OAUTH_CLIENT_SECRET=${GITHUB_OAUTH_CLIENT_SECRET:-}
+      - GITHUB_OAUTH_REDIRECT_URI=${GITHUB_OAUTH_REDIRECT_URI:-}
+      - SESSION_SECRET=${SESSION_SECRET:-}
+      - GITHUB_ALLOWED_USERS=${GITHUB_ALLOWED_USERS:-}
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"

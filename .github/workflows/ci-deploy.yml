@@ -37,6 +37,11 @@ jobs:
           SYNTHIQ_GATEWAY_URL: ${{ secrets.SYNTHIQ_GATEWAY_URL }}
           SYNTHIQ_GATEWAY_TOKEN: ${{ secrets.SYNTHIQ_GATEWAY_TOKEN }}
           SYNTHIQ_MODEL: ${{ secrets.SYNTHIQ_MODEL }}
+          OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
+          OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
+          OAUTH_REDIRECT_URI: ${{ secrets.OAUTH_REDIRECT_URI }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          OAUTH_ALLOWED_USERS: ${{ secrets.OAUTH_ALLOWED_USERS }}
         run: |
           DEPLOY_PATH="/home/slayo/docker/homelab-manager"
 
@@ -56,6 +61,11 @@ jobs:
             "SYNTHIQ_GATEWAY_URL=${SYNTHIQ_GATEWAY_URL}" \
             "SYNTHIQ_GATEWAY_TOKEN=${SYNTHIQ_GATEWAY_TOKEN}" \
             "SYNTHIQ_MODEL=${SYNTHIQ_MODEL}" \
+            "GITHUB_OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}" \
+            "GITHUB_OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}" \
+            "GITHUB_OAUTH_REDIRECT_URI=${OAUTH_REDIRECT_URI}" \
+            "SESSION_SECRET=${SESSION_SECRET}" \
+            "GITHUB_ALLOWED_USERS=${OAUTH_ALLOWED_USERS}" \
             > "$DEPLOY_PATH/.env"
 
           # Rebuild container
