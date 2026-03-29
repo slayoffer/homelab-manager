@@ -7,7 +7,6 @@ function formatTime(dateStr) {
   });
 }
 
-// Simple markdown: code blocks, inline code, bold, line breaks
 function renderMarkdown(text) {
   if (!text) return null;
 
@@ -19,7 +18,7 @@ function renderMarkdown(text) {
       const lang = lines[0].trim();
       const code = (lang ? lines.slice(1) : lines).join('\n');
       return (
-        <pre key={i} className="bg-black/30 rounded-md p-3 my-2 overflow-x-auto text-xs">
+        <pre key={i} className="bg-black/40 rounded-lg p-3 my-2 overflow-x-auto text-xs font-mono">
           <code>{code}</code>
         </pre>
       );
@@ -27,7 +26,7 @@ function renderMarkdown(text) {
 
     return part.split('\n').map((line, j) => {
       let processed = line.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
-      processed = processed.replace(/`([^`]+)`/g, '<code class="bg-black/30 px-1 rounded text-xs">$1</code>');
+      processed = processed.replace(/`([^`]+)`/g, '<code class="bg-black/30 px-1.5 py-0.5 rounded text-xs font-mono">$1</code>');
 
       return (
         <span key={`${i}-${j}`}>
@@ -44,8 +43,8 @@ export function ChatMessage({ message, isStreaming, theme, AssistantIcon }) {
   const attachments = message.attachments ? (typeof message.attachments === 'string' ? JSON.parse(message.attachments) : message.attachments) : [];
 
   return (
-    <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
-      <div className={`shrink-0 w-8 h-8 md:w-7 md:h-7 rounded-full flex items-center justify-center ${
+    <div className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : ''}`}>
+      <div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5 ${
         isUser ? 'bg-primary/20' : theme.accentBg
       }`}>
         {isUser
@@ -54,16 +53,16 @@ export function ChatMessage({ message, isStreaming, theme, AssistantIcon }) {
         }
       </div>
 
-      <div className={`max-w-[92%] md:max-w-[80%] min-w-0 ${isUser ? 'items-end' : 'items-start'}`}>
-        <div className={`rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
+      <div className={`max-w-[88%] md:max-w-[75%] min-w-0 ${isUser ? 'items-end' : 'items-start'}`}>
+        <div className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed border ${
           isUser
-            ? 'bg-primary/15 text-foreground'
-            : 'bg-card border border-border text-foreground'
+            ? 'bg-primary/10 border-primary/20 rounded-tr-sm'
+            : `${theme.bubble} rounded-tl-sm`
         }`}>
           {attachments.length > 0 && (
             <div className="flex gap-2 mb-2">
               {attachments.map((att, i) => (
-                <div key={i} className="w-20 h-20 rounded-md bg-muted flex items-center justify-center text-[10px] text-muted-foreground overflow-hidden">
+                <div key={i} className="w-20 h-20 rounded-lg bg-black/20 flex items-center justify-center text-[10px] text-muted-foreground overflow-hidden">
                   {att.preview
                     ? <img src={att.preview} alt={att.fileName} className="w-full h-full object-cover" />
                     : att.fileName || 'image'
@@ -76,14 +75,14 @@ export function ChatMessage({ message, isStreaming, theme, AssistantIcon }) {
           <div className="break-words">
             {isUser ? message.content : renderMarkdown(message.content)}
             {isStreaming && (
-              <span className={`inline-block w-1.5 h-4 ${theme.cursor} animate-pulse ml-0.5 align-text-bottom`} />
+              <span className={`inline-block w-1.5 h-4 ${theme.cursor} animate-pulse ml-0.5 align-text-bottom rounded-sm`} />
             )}
           </div>
         </div>
 
-        <p className={`text-[11px] md:text-[10px] text-muted-foreground/50 mt-1 ${isUser ? 'text-right' : ''}`}>
+        <p className={`text-[10px] text-muted-foreground/40 mt-1 px-1 ${isUser ? 'text-right' : ''}`}>
           {formatTime(message.created_at)}
-          {message.model && <span className="ml-1.5">{message.model}</span>}
+          {message.model && <span className="ml-1.5 opacity-70">{message.model}</span>}
         </p>
       </div>
     </div>
