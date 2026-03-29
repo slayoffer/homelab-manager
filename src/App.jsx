@@ -12,7 +12,7 @@ import { Loader2 } from 'lucide-react';
 
 function AppContent() {
   const { user, authEnabled, loading: authLoading } = useAuth();
-  const { get } = useApi();
+  const { get, post } = useApi();
   const [workspaces, setWorkspaces] = useState([]);
   const [activeId, setActiveId] = useState('wow');
   const [loading, setLoading] = useState(true);
@@ -53,6 +53,12 @@ function AppContent() {
 
   const activeWorkspace = workspaces.find(w => w.id === activeId);
 
+  const handleReorder = async (orderedIds) => {
+    const reordered = orderedIds.map(id => workspaces.find(w => w.id === id)).filter(Boolean);
+    setWorkspaces(reordered);
+    await post('/workspaces/order', { order: orderedIds });
+  };
+
   const renderWorkspace = () => {
     if (!activeWorkspace) return null;
     if (activeWorkspace.id === 'wow') return <WowDashboard />;
@@ -75,6 +81,7 @@ function AppContent() {
         workspaces={workspaces}
         activeId={activeId}
         onSelect={setActiveId}
+        onReorder={handleReorder}
         user={user}
       />
       <main className="flex-1 overflow-auto">

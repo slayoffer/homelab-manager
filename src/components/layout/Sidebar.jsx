@@ -1,4 +1,5 @@
-import { Sword, Container, Server, Globe, MonitorCog, Home, LogOut, Shell, Sparkles } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Sword, Container, Server, Globe, MonitorCog, Home, LogOut, Shell, Sparkles, GripVertical } from 'lucide-react';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
@@ -14,8 +15,47 @@ const iconMap = {
   Claw: Shell,
 };
 
-export function Sidebar({ workspaces, activeId, onSelect, user }) {
+export function Sidebar({ workspaces, activeId, onSelect, onReorder, user }) {
   const { authEnabled, logout } = useAuth();
+  const [dragId, setDragId] = useState(null);
+  const [overId, setOverId] = useState(null);
+  const dragRef = useRef(null);
+
+  const handleDragStart = (e, id) => {
+    setDragId(id);
+    dragRef.current = id;
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, id) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (id !== overId) setOverId(id);
+  };
+
+  const handleDrop = (e, targetId) => {
+    e.preventDefault();
+    const sourceId = dragRef.current;
+    if (!sourceId || sourceId === targetId) {
+      setDragId(null);
+      setOverId(null);
+      return;
+    }
+    const ids = workspaces.map(w => w.id);
+    const fromIdx = ids.indexOf(sourceId);
+    const toIdx = ids.indexOf(targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    ids.splice(fromIdx, 1);
+    ids.splice(toIdx, 0, sourceId);
+    onReorder?.(ids);
+    setDragId(null);
+    setOverId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragId(null);
+    setOverId(null);
+  };
 
   return (
     <div className="w-64 min-h-screen border-r border-border bg-[#0c1222] flex flex-col">
@@ -34,23 +74,40 @@ export function Sidebar({ workspaces, activeId, onSelect, user }) {
         {workspaces.map((ws) => {
           const Icon = iconMap[ws.icon] || Server;
           const isActive = ws.id === activeId;
+          const isDragging = dragId === ws.id;
+          const isOver = overId === ws.id && dragId !== ws.id;
 
           return (
-            <button
+            <div
               key={ws.id}
-              onClick={() => onSelect(ws.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors mb-0.5 ${
-                isActive
-                  ? 'bg-primary/15 text-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-              }`}
+              draggable
+              onDragStart={(e) => handleDragStart(e, ws.id)}
+              onDragOver={(e) => handleDragOver(e, ws.id)}
+              onDrop={(e) => handleDrop(e, ws.id)}
+              onDragEnd={handleDragEnd}
+              className={`flex items-center gap-1 mb-0.5 rounded-lg transition-all
+                ${isDragging ? 'opacity-40' : ''}
+                ${isOver ? 'border-t-2 border-primary/50' : 'border-t-2 border-transparent'}
+              `}
             >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="flex-1 text-left">{ws.name}</span>
-              {ws.status === 'stub' && (
-                <StatusBadge status="stub" />
-              )}
-            </button>
+              <div className="cursor-grab active:cursor-grabbing px-0.5 py-2.5 text-muted-foreground/30 hover:text-muted-foreground/60">
+                <GripVertical className="h-3 w-3" />
+              </div>
+              <button
+                onClick={() => onSelect(ws.id)}
+                className={`flex-1 flex items-center gap-3 px-2 py-2.5 rounded-lg text-sm transition-colors ${
+                  isActive
+                    ? 'bg-primary/15 text-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                }`}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="flex-1 text-left">{ws.name}</span>
+                {ws.status === 'stub' && (
+                  <StatusBadge status="stub" />
+                )}
+              </button>
+            </div>
           );
         })}
       </nav>

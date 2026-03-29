@@ -138,6 +138,12 @@ const MIGRATIONS = [
     system_prompt TEXT DEFAULT '',
     updated_at TEXT DEFAULT (datetime('now'))
   );`,
+
+  // Migration 6: Workspace ordering
+  `CREATE TABLE IF NOT EXISTS workspace_order (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    ordering TEXT DEFAULT '[]'
+  );`,
 ];
 
 function runMigrations() {

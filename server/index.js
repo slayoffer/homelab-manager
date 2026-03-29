@@ -4,7 +4,7 @@ import { createServer } from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import config from './config.js';
-import './db.js'; // Initialize database on startup
+import db from './db.js'; // Initialize database on startup
 import { registerAuthRoutes, requireAuth, authenticateWebSocket, authEnabled } from './auth.js';
 import { WowWorkspace } from './workspaces/wow/index.js';
 import { DockerServicesWorkspace } from './workspaces/docker-services/index.js';
@@ -45,9 +45,30 @@ for (const ws of workspaces) {
   app.use(`/api/workspaces/${ws.id}`, ws.getRoutes());
 }
 
-// List all workspaces
+// List all workspaces (respecting custom order)
 app.get('/api/workspaces', (req, res) => {
-  res.json(workspaces.map(w => w.getMeta()));
+  const all = workspaces.map(w => w.getMeta());
+  const row = db.prepare('SELECT ordering FROM workspace_order WHERE id = 1').get();
+  if (row?.ordering) {
+    try {
+      const order = JSON.parse(row.ordering);
+      all.sort((a, b) => {
+        const ai = order.indexOf(a.id);
+        const bi = order.indexOf(b.id);
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+      });
+    } catch { /* use default order */ }
+  }
+  res.json(all);
+});
+
+// Save workspace order
+app.post('/api/workspaces/order', (req, res) => {
+  const { order } = req.body;
+  if (!Array.isArray(order)) return res.status(400).json({ error: 'order must be an array' });
+  db.prepare('INSERT INTO workspace_order (id, ordering) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET ordering = excluded.ordering')
+    .run(JSON.stringify(order));
+  res.json({ success: true });
 });
 
 // Serve static files in production
