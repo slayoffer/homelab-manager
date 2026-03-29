@@ -26,15 +26,15 @@ app.use(express.json({ limit: '1mb' }));
 // Auth routes (public — no middleware)
 registerAuthRoutes(app);
 
-// Workspaces
+// Workspaces — active first, stubs at the bottom
 const workspaces = [
   new WowWorkspace(),
+  new OpenClawWorkspace(),
+  new SynthiqWorkspace(),
   new DockerServicesWorkspace(),
   new ProxmoxWorkspace(),
   new TraefikWorkspace(),
   new ServersWorkspace(),
-  new OpenClawWorkspace(),
-  new SynthiqWorkspace(),
 ];
 
 // Protect workspace routes with auth (skipped if auth not configured)
