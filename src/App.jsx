@@ -6,12 +6,9 @@ import { WorkspaceStub } from '@/components/stubs/WorkspaceStub';
 import { AiAssistantDashboard } from '@/components/ai-assistant/AiAssistantDashboard';
 import { LoginPage } from '@/components/auth/LoginPage';
 import { useApi } from '@/hooks/useApi';
-import { Loader2, Shell, Sparkles } from 'lucide-react';
-
-const AI_WORKSPACES = {
-  'openclaw-ai': { name: 'OpenClaw AI', Icon: Shell },
-  'synthiq-ai': { name: 'Synthiq AI', Icon: Sparkles },
-};
+import { AiChatWidget } from '@/components/ai-assistant/AiChatWidget';
+import { AI_WORKSPACES } from '@/components/ai-assistant/ai-themes';
+import { Loader2 } from 'lucide-react';
 
 function AppContent() {
   const { user, authEnabled, loading: authLoading } = useAuth();
@@ -83,6 +80,7 @@ function AppContent() {
       <main className="flex-1 overflow-auto">
         {renderWorkspace()}
       </main>
+      <AiChatWidget activeWorkspaceId={activeId} />
     </div>
   );
 }
