@@ -144,7 +144,7 @@ export function AiChatWidget({ activeWorkspaceId }) {
 
       {/* Chat panel */}
       {open && (
-        <div className="fixed bottom-5 right-5 z-50 w-[380px] h-[500px] flex flex-col
+        <div className="fixed bottom-5 right-5 z-50 w-[380px] h-[70dvh] flex flex-col
           rounded-2xl border border-border bg-background shadow-2xl overflow-hidden
           max-sm:bottom-0 max-sm:right-0 max-sm:w-full max-sm:h-[80dvh] max-sm:rounded-b-none">
 
