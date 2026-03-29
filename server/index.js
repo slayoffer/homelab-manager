@@ -12,6 +12,7 @@ import { ProxmoxWorkspace } from './workspaces/proxmox/index.js';
 import { TraefikWorkspace } from './workspaces/traefik/index.js';
 import { ServersWorkspace } from './workspaces/servers/index.js';
 import { OpenClawWorkspace, SynthiqWorkspace, aiStreams } from './workspaces/ai-assistant/index.js';
+import { GcServerWorkspace } from './workspaces/gc-server/index.js';
 import { dockerComposeAction, containerLogs, containerLogsAll } from './workspaces/wow/docker.js';
 import { backupDirectory, backupDatabase, backupVolumes } from './workspaces/wow/backup.js';
 
@@ -31,6 +32,7 @@ const workspaces = [
   new WowWorkspace(),
   new OpenClawWorkspace(),
   new SynthiqWorkspace(),
+  new GcServerWorkspace(),
   new DockerServicesWorkspace(),
   new ProxmoxWorkspace(),
   new TraefikWorkspace(),

@@ -8,6 +8,7 @@ export class ProxmoxWorkspace extends WorkspaceBase {
       icon: 'Server',
       status: 'stub',
       description: 'Manage Proxmox virtual machines and LXC containers. Start/stop VMs, create snapshots, view resource usage.',
+      type: 'baremetal-server',
     });
   }
 }

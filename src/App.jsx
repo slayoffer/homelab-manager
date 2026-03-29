@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { WowDashboard } from '@/components/wow/WowDashboard';
 import { WorkspaceStub } from '@/components/stubs/WorkspaceStub';
 import { AiAssistantDashboard } from '@/components/ai-assistant/AiAssistantDashboard';
+import { GcServerDashboard } from '@/components/gc-server/GcServerDashboard';
 import { LoginPage } from '@/components/auth/LoginPage';
 import { useApi } from '@/hooks/useApi';
 import { AiChatWidget } from '@/components/ai-assistant/AiChatWidget';
@@ -62,6 +63,7 @@ function AppContent() {
   const renderWorkspace = () => {
     if (!activeWorkspace) return null;
     if (activeWorkspace.id === 'wow') return <WowDashboard />;
+    if (activeWorkspace.id === 'gc-server') return <GcServerDashboard />;
     const aiConfig = AI_WORKSPACES[activeWorkspace.id];
     if (aiConfig) {
       return (

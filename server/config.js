@@ -33,6 +33,12 @@ const config = {
     defaultModel: process.env.SYNTHIQ_MODEL || 'openai/gpt-5.4',
     systemPrompt: process.env.SYNTHIQ_SYSTEM_PROMPT || '',
   },
+  gcServer: {
+    host: process.env.GC_SERVER_HOST || '147.45.101.28',
+    port: parseInt(process.env.GC_SERVER_PORT || '22'),
+    user: process.env.GC_SERVER_USER || 'slayo',
+    keyPath: process.env.GC_SERVER_KEY || '/root/.ssh/geekconsole_timeweb_rsa',
+  },
   oauth: {
     clientId: process.env.GITHUB_OAUTH_CLIENT_ID || '',
     clientSecret: process.env.GITHUB_OAUTH_CLIENT_SECRET || '',

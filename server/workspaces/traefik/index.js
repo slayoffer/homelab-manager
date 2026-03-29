@@ -8,6 +8,7 @@ export class TraefikWorkspace extends WorkspaceBase {
       icon: 'Globe',
       status: 'stub',
       description: 'View and manage Traefik reverse proxy routes, TLS certificates, and middleware configuration.',
+      type: 'reverse-proxy',
     });
   }
 }

@@ -8,6 +8,7 @@ export class DockerServicesWorkspace extends WorkspaceBase {
       icon: 'Container',
       status: 'stub',
       description: 'Manage all docker-compose stacks on the server. View container status, start/stop services, check logs.',
+      type: 'docker-server',
     });
   }
 }

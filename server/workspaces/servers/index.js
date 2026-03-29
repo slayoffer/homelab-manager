@@ -8,6 +8,7 @@ export class ServersWorkspace extends WorkspaceBase {
       icon: 'MonitorCog',
       status: 'stub',
       description: 'Server inventory and monitoring. SSH connectivity status, CPU/RAM/disk usage, and basic management.',
+      type: 'server-inventory',
     });
   }
 }

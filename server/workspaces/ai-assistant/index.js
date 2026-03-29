@@ -8,13 +8,14 @@ import { randomUUID } from 'crypto';
 export const aiStreams = new Map();
 
 export class AiGatewayWorkspace extends WorkspaceBase {
-  constructor({ id, name, icon, description, gateway }) {
+  constructor({ id, name, icon, description, gateway, type }) {
     super({
       id,
       name,
       icon,
       status: gateway.token ? 'active' : 'stub',
       description,
+      type,
     });
     this.gateway = gateway;
   }
@@ -273,6 +274,7 @@ export class OpenClawWorkspace extends AiGatewayWorkspace {
       name: 'OpenClaw AI',
       icon: 'Claw',
       description: 'Chat with AI via OpenClaw gateway',
+      type: 'ai-agent',
       gateway: config.openClaw,
     });
   }
@@ -285,6 +287,7 @@ export class SynthiqWorkspace extends AiGatewayWorkspace {
       name: 'Synthiq AI',
       icon: 'Sparkles',
       description: 'Chat with AI via Synthiq gateway',
+      type: 'ai-agent',
       gateway: config.synthiq,
     });
   }

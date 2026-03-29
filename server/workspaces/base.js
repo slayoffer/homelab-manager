@@ -1,12 +1,13 @@
 import { Router } from 'express';
 
 export class WorkspaceBase {
-  constructor({ id, name, icon, status = 'stub', description = '' }) {
+  constructor({ id, name, icon, status = 'stub', description = '', type }) {
     this.id = id;
     this.name = name;
     this.icon = icon;
     this.status = status;
     this.description = description;
+    this.type = type;
   }
 
   async getStatus() {
@@ -30,6 +31,7 @@ export class WorkspaceBase {
         icon: this.icon,
         status: this.status,
         description: this.description,
+        type: this.type,
       });
     });
     return router;
@@ -42,6 +44,7 @@ export class WorkspaceBase {
       icon: this.icon,
       status: this.status,
       description: this.description,
+      type: this.type,
     };
   }
 }

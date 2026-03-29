@@ -10,6 +10,7 @@ services:
       - /home/slayo/docker/wow/azerothcore-wotlk:/wow
       - ./data:/data
       - /opt/backups/wow:/backups
+      - /home/slayo/.ssh/geekconsole_timeweb_rsa:/root/.ssh/geekconsole_timeweb_rsa:ro
     environment:
       - WOW_PATH=/wow
       - WOW_COMPOSE_PATH=/wow

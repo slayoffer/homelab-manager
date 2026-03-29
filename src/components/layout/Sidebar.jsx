@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Sword, Container, Server, Globe, MonitorCog, Home, LogOut, Shell, Sparkles, GripVertical } from 'lucide-react';
+import { Sword, Container, Server, Globe, MonitorCog, Home, LogOut, Shell, Sparkles, GripVertical, HardDrive } from 'lucide-react';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
@@ -13,6 +13,7 @@ const iconMap = {
   Shell,
   Sparkles,
   Claw: Shell,
+  HardDrive,
 };
 
 export function Sidebar({ workspaces, activeId, onSelect, onReorder, user }) {
@@ -102,7 +103,12 @@ export function Sidebar({ workspaces, activeId, onSelect, onReorder, user }) {
                 }`}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span className="flex-1 text-left">{ws.name}</span>
+                <div className="flex-1 text-left min-w-0">
+                  <span className="block truncate">{ws.name}</span>
+                  {ws.type && (
+                    <span className="block text-[10px] text-muted-foreground/40 leading-tight">{ws.type}</span>
+                  )}
+                </div>
                 {ws.status === 'stub' && (
                   <StatusBadge status="stub" />
                 )}

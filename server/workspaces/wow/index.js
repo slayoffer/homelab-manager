@@ -16,6 +16,7 @@ export class WowWorkspace extends WorkspaceBase {
       icon: 'Sword',
       status: 'active',
       description: 'AzerothCore WotLK server management',
+      type: 'game-server',
     });
   }
 
