@@ -25,11 +25,13 @@ const config = {
     gatewayUrl: process.env.OPENCLAW_GATEWAY_URL || 'http://openclaw:18789',
     token: process.env.OPENCLAW_GATEWAY_TOKEN || '',
     defaultModel: process.env.OPENCLAW_MODEL || 'openai/gpt-5.4',
+    systemPrompt: process.env.OPENCLAW_SYSTEM_PROMPT || '',
   },
   synthiq: {
     gatewayUrl: process.env.SYNTHIQ_GATEWAY_URL || '',
     token: process.env.SYNTHIQ_GATEWAY_TOKEN || '',
     defaultModel: process.env.SYNTHIQ_MODEL || 'openai/gpt-5.4',
+    systemPrompt: process.env.SYNTHIQ_SYSTEM_PROMPT || '',
   },
   oauth: {
     clientId: process.env.GITHUB_OAUTH_CLIENT_ID || '',

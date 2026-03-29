@@ -21,10 +21,12 @@ services:
       - OPENCLAW_GATEWAY_URL=${OPENCLAW_GATEWAY_URL:-}
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
       - OPENCLAW_MODEL=${OPENCLAW_MODEL:-openai/gpt-5.4}
+      - OPENCLAW_SYSTEM_PROMPT=${OPENCLAW_SYSTEM_PROMPT:-}
       # Synthiq AI Gateway (optional — disabled without these)
       - SYNTHIQ_GATEWAY_URL=${SYNTHIQ_GATEWAY_URL:-}
       - SYNTHIQ_GATEWAY_TOKEN=${SYNTHIQ_GATEWAY_TOKEN:-}
       - SYNTHIQ_MODEL=${SYNTHIQ_MODEL:-openai/gpt-5.4}
+      - SYNTHIQ_SYSTEM_PROMPT=${SYNTHIQ_SYSTEM_PROMPT:-}
       # GitHub OAuth (optional — auth disabled without these)
       # Create your app at: https://github.com/settings/developers
       # - GITHUB_OAUTH_CLIENT_ID=

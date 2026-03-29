@@ -51,10 +51,26 @@ export class AiGatewayWorkspace extends WorkspaceBase {
     const gw = this.gateway;
     const workspaceId = this.id;
 
-    // Gateway status
+    // Gateway status + settings
     router.get('/status', async (req, res) => {
       try {
-        res.json(await this.getStatus());
+        const status = await this.getStatus();
+        const settings = db.prepare('SELECT system_prompt FROM ai_workspace_settings WHERE workspace_id = ?').get(workspaceId);
+        res.json({ ...status, systemPrompt: settings?.system_prompt || gw.systemPrompt || '' });
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // Get/set system prompt
+    router.post('/settings', (req, res) => {
+      try {
+        const { systemPrompt } = req.body;
+        db.prepare(`INSERT INTO ai_workspace_settings (workspace_id, system_prompt, updated_at)
+          VALUES (?, ?, datetime('now'))
+          ON CONFLICT(workspace_id) DO UPDATE SET system_prompt = excluded.system_prompt, updated_at = excluded.updated_at
+        `).run(workspaceId, systemPrompt || '');
+        res.json({ success: true });
       } catch (err) {
         res.status(500).json({ error: err.message });
       }
@@ -130,8 +146,14 @@ export class AiGatewayWorkspace extends WorkspaceBase {
         // Build conversation history (last 30 messages)
         const history = db.prepare('SELECT role, content, attachments FROM ai_messages WHERE session_id = ? ORDER BY created_at DESC LIMIT 30').all(sessionId).reverse();
 
-        // Build OpenAI messages format
-        const messages = history.map(m => {
+        // Build OpenAI messages format with system prompt (DB > env > request)
+        const settings = db.prepare('SELECT system_prompt FROM ai_workspace_settings WHERE workspace_id = ?').get(workspaceId);
+        const systemPrompt = settings?.system_prompt || gw.systemPrompt;
+        const messages = [];
+        if (systemPrompt) {
+          messages.push({ role: 'system', content: systemPrompt });
+        }
+        const historyMessages = history.map(m => {
           if (m.role === 'user' && m.attachments) {
             const parsed = JSON.parse(m.attachments);
             if (m.content === message && attachments?.length) {
@@ -149,6 +171,7 @@ export class AiGatewayWorkspace extends WorkspaceBase {
           }
           return { role: m.role, content: m.content };
         });
+        messages.push(...historyMessages);
 
         // Get WS connection for streaming
         const ws = requestId ? aiStreams.get(requestId) : null;

@@ -131,6 +131,13 @@ const MIGRATIONS = [
   // Migration 4: Add workspace_id to AI tables for multi-workspace support
   `ALTER TABLE ai_sessions ADD COLUMN workspace_id TEXT DEFAULT 'openclaw-ai';
   CREATE INDEX IF NOT EXISTS idx_ai_sessions_workspace ON ai_sessions(workspace_id);`,
+
+  // Migration 5: AI workspace settings (system prompt)
+  `CREATE TABLE IF NOT EXISTS ai_workspace_settings (
+    workspace_id TEXT PRIMARY KEY,
+    system_prompt TEXT DEFAULT '',
+    updated_at TEXT DEFAULT (datetime('now'))
+  );`,
 ];
 
 function runMigrations() {
