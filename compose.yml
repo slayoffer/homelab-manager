@@ -45,6 +45,7 @@ services:
       - "traefik.http.routers.homelab.middlewares=default-whitelist@file"
     networks:
       proxy:
+      default:
     restart: unless-stopped
 
 networks:
