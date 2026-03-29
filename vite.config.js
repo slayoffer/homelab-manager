@@ -4,8 +4,12 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 import { execSync } from 'child_process'
 
-const commitHash = execSync('git rev-parse --short HEAD').toString().trim()
-const commitDate = execSync('git log -1 --format=%ci').toString().trim().split(' ')[0]
+let commitHash = 'dev'
+let commitDate = new Date().toISOString().split('T')[0]
+try {
+  commitHash = execSync('git rev-parse --short HEAD').toString().trim()
+  commitDate = execSync('git log -1 --format=%ci').toString().trim().split(' ')[0]
+} catch { /* no git available (Docker build) */ }
 
 export default defineConfig({
   define: {

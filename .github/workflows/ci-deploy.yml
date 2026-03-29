@@ -43,9 +43,10 @@ jobs:
           # Copy source files
           cp -r server "$DEPLOY_PATH/"
           cp -r src "$DEPLOY_PATH/"
-          cp package.json package-lock.json Dockerfile "$DEPLOY_PATH/"
+          cp package.json package-lock.json Dockerfile vite.config.js "$DEPLOY_PATH/"
           cp compose.yml "$DEPLOY_PATH/"
           cp -r .github "$DEPLOY_PATH/" 2>/dev/null || true
+          cp -r .git "$DEPLOY_PATH/" 2>/dev/null || true
 
           # Generate .env from secrets
           printf '%s\n' \
