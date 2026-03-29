@@ -136,7 +136,7 @@ export function Sidebar({ workspaces, activeId, onSelect, onReorder, user }) {
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">
-            {authEnabled ? 'Not signed in' : 'Homelab Manager v1.0'}
+            {authEnabled ? 'Not signed in' : `Homelab Manager ${__APP_VERSION__}`}
           </p>
         )}
       </div>
