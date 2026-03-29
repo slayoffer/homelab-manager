@@ -11,7 +11,7 @@ import { DockerServicesWorkspace } from './workspaces/docker-services/index.js';
 import { ProxmoxWorkspace } from './workspaces/proxmox/index.js';
 import { TraefikWorkspace } from './workspaces/traefik/index.js';
 import { ServersWorkspace } from './workspaces/servers/index.js';
-import { AiAssistantWorkspace, aiStreams } from './workspaces/ai-assistant/index.js';
+import { OpenClawWorkspace, SynthiqWorkspace, aiStreams } from './workspaces/ai-assistant/index.js';
 import { dockerComposeAction, containerLogs, containerLogsAll } from './workspaces/wow/docker.js';
 import { backupDirectory, backupDatabase, backupVolumes } from './workspaces/wow/backup.js';
 
@@ -19,7 +19,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const server = createServer(app);
 
-app.use('/api/workspaces/ai-assistant/chat', express.json({ limit: '10mb' }));
+app.use('/api/workspaces/openclaw-ai/chat', express.json({ limit: '10mb' }));
+app.use('/api/workspaces/synthiq-ai/chat', express.json({ limit: '10mb' }));
 app.use(express.json({ limit: '1mb' }));
 
 // Auth routes (public — no middleware)
@@ -32,7 +33,8 @@ const workspaces = [
   new ProxmoxWorkspace(),
   new TraefikWorkspace(),
   new ServersWorkspace(),
-  new AiAssistantWorkspace(),
+  new OpenClawWorkspace(),
+  new SynthiqWorkspace(),
 ];
 
 // Protect workspace routes with auth (skipped if auth not configured)

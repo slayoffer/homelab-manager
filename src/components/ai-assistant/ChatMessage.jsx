@@ -1,4 +1,4 @@
-import { BrainCircuit, User } from 'lucide-react';
+import { User } from 'lucide-react';
 
 function formatTime(dateStr) {
   if (!dateStr) return '';
@@ -11,7 +11,6 @@ function formatTime(dateStr) {
 function renderMarkdown(text) {
   if (!text) return null;
 
-  // Split by code blocks
   const parts = text.split(/(```[\s\S]*?```)/g);
 
   return parts.map((part, i) => {
@@ -26,11 +25,8 @@ function renderMarkdown(text) {
       );
     }
 
-    // Process inline elements
     return part.split('\n').map((line, j) => {
-      // Bold
       let processed = line.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
-      // Inline code
       processed = processed.replace(/`([^`]+)`/g, '<code class="bg-black/30 px-1 rounded text-xs">$1</code>');
 
       return (
@@ -43,30 +39,27 @@ function renderMarkdown(text) {
   });
 }
 
-export function ChatMessage({ message, isStreaming }) {
+export function ChatMessage({ message, isStreaming, theme, AssistantIcon }) {
   const isUser = message.role === 'user';
   const attachments = message.attachments ? (typeof message.attachments === 'string' ? JSON.parse(message.attachments) : message.attachments) : [];
 
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
-      {/* Avatar */}
       <div className={`shrink-0 w-8 h-8 md:w-7 md:h-7 rounded-full flex items-center justify-center ${
-        isUser ? 'bg-primary/20' : 'bg-emerald-500/20'
+        isUser ? 'bg-primary/20' : theme.accentBg
       }`}>
         {isUser
           ? <User className="h-3.5 w-3.5 text-primary" />
-          : <BrainCircuit className="h-3.5 w-3.5 text-emerald-400" />
+          : <AssistantIcon className={`h-3.5 w-3.5 ${theme.accent}`} />
         }
       </div>
 
-      {/* Content */}
       <div className={`max-w-[92%] md:max-w-[80%] min-w-0 ${isUser ? 'items-end' : 'items-start'}`}>
         <div className={`rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
           isUser
             ? 'bg-primary/15 text-foreground'
             : 'bg-card border border-border text-foreground'
         }`}>
-          {/* Image attachments */}
           {attachments.length > 0 && (
             <div className="flex gap-2 mb-2">
               {attachments.map((att, i) => (
@@ -80,16 +73,14 @@ export function ChatMessage({ message, isStreaming }) {
             </div>
           )}
 
-          {/* Text content */}
           <div className="break-words">
             {isUser ? message.content : renderMarkdown(message.content)}
             {isStreaming && (
-              <span className="inline-block w-1.5 h-4 bg-emerald-400 animate-pulse ml-0.5 align-text-bottom" />
+              <span className={`inline-block w-1.5 h-4 ${theme.cursor} animate-pulse ml-0.5 align-text-bottom`} />
             )}
           </div>
         </div>
 
-        {/* Timestamp */}
         <p className={`text-[11px] md:text-[10px] text-muted-foreground/50 mt-1 ${isUser ? 'text-right' : ''}`}>
           {formatTime(message.created_at)}
           {message.model && <span className="ml-1.5">{message.model}</span>}

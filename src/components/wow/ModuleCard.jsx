@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   GitBranch, Download, Loader2, Check, ExternalLink,
-  ChevronDown, ChevronRight, Clock, GitCommit,
+  ChevronDown, ChevronRight, Clock, GitCommit, AlertCircle,
 } from 'lucide-react';
 
 function formatDate(dateStr) {
@@ -19,7 +19,7 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export function ModuleCard({ repo, updateInfo, onPull, pulling }) {
+export function ModuleCard({ repo, updateInfo, pullResult, onPull, pulling }) {
   const [commitsOpen, setCommitsOpen] = useState(false);
   const hasUpdates = updateInfo && updateInfo.behind > 0;
   const isChecked = updateInfo !== undefined;
@@ -28,13 +28,22 @@ export function ModuleCard({ repo, updateInfo, onPull, pulling }) {
   // Build GitHub URL if available
   const ghUrl = repo.remote?.match(/github\.com[:/](.+?)(?:\.git)?$/)?.[1];
 
+  // Parse pull result for display
+  const pullMessage = pullResult?.output?.includes('Already up to date')
+    ? 'Already up to date'
+    : pullResult?.success
+      ? 'Pulled successfully'
+      : pullResult?.success === false
+        ? 'Pull failed'
+        : null;
+
   return (
     <Card className={`bg-card/50 ${hasUpdates ? 'border-primary/30' : ''}`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0 space-y-2">
             {/* Header: name + repo link */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-medium text-sm">{repo.name || repo.id}</h3>
               {ghUrl && (
                 <a
@@ -82,6 +91,21 @@ export function ModuleCard({ repo, updateInfo, onPull, pulling }) {
             <p className="text-xs text-muted-foreground/70 truncate">
               {repo.commitMessage}
             </p>
+
+            {/* Pull result feedback */}
+            {pullMessage && !hasUpdates && (
+              <div className={`flex items-center gap-1.5 text-xs ${
+                pullResult?.success === false
+                  ? 'text-red-400'
+                  : 'text-emerald-400/70'
+              }`}>
+                {pullResult?.success === false
+                  ? <AlertCircle className="h-3 w-3" />
+                  : <Check className="h-3 w-3" />
+                }
+                {pullMessage}
+              </div>
+            )}
 
             {/* Available updates (expandable commit list) */}
             {hasUpdates && updateInfo.newCommits?.length > 0 && (

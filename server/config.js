@@ -26,6 +26,11 @@ const config = {
     token: process.env.OPENCLAW_GATEWAY_TOKEN || '',
     defaultModel: process.env.OPENCLAW_MODEL || 'openai/gpt-5.4',
   },
+  synthiq: {
+    gatewayUrl: process.env.SYNTHIQ_GATEWAY_URL || '',
+    token: process.env.SYNTHIQ_GATEWAY_TOKEN || '',
+    defaultModel: process.env.SYNTHIQ_MODEL || 'openai/gpt-5.4',
+  },
   oauth: {
     clientId: process.env.GITHUB_OAUTH_CLIENT_ID || '',
     clientSecret: process.env.GITHUB_OAUTH_CLIENT_SECRET || '',

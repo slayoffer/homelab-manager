@@ -7,25 +7,34 @@ import { randomUUID } from 'crypto';
 // Shared map: requestId -> ws connection (set by WS handler in index.js)
 export const aiStreams = new Map();
 
-export class AiAssistantWorkspace extends WorkspaceBase {
-  constructor() {
+export class AiGatewayWorkspace extends WorkspaceBase {
+  constructor({ id, name, icon, description, gateway }) {
     super({
-      id: 'ai-assistant',
-      name: 'AI Assistant',
-      icon: 'BrainCircuit',
-      status: config.openClaw.token ? 'active' : 'stub',
-      description: 'Chat with AI via OpenClaw gateway',
+      id,
+      name,
+      icon,
+      status: gateway.token ? 'active' : 'stub',
+      description,
     });
+    this.gateway = gateway;
   }
 
   async getStatus() {
-    if (!config.openClaw.token) return { status: 'unconfigured' };
+    if (!this.gateway.token) return { status: 'unconfigured' };
     try {
-      const res = await fetch(`${config.openClaw.gatewayUrl}/v1/models`, {
-        headers: { Authorization: `Bearer ${config.openClaw.token}` },
+      const res = await fetch(`${this.gateway.gatewayUrl}/v1/models`, {
+        headers: {
+          Authorization: `Bearer ${this.gateway.token}`,
+          'x-openclaw-scopes': 'operator.read',
+        },
         signal: AbortSignal.timeout(5000),
       });
-      return { status: res.ok ? 'connected' : 'error', code: res.status };
+      if (!res.ok) return { status: 'error', code: res.status };
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        return { status: 'error', detail: 'HTTP endpoint may be disabled on gateway' };
+      }
+      return { status: 'connected' };
     } catch {
       return { status: 'disconnected' };
     }
@@ -33,6 +42,8 @@ export class AiAssistantWorkspace extends WorkspaceBase {
 
   getRoutes() {
     const router = Router();
+    const gw = this.gateway;
+    const workspaceId = this.id;
 
     // Gateway status
     router.get('/status', async (req, res) => {
@@ -50,8 +61,8 @@ export class AiAssistantWorkspace extends WorkspaceBase {
           SELECT s.*,
             (SELECT content FROM ai_messages WHERE session_id = s.id ORDER BY created_at DESC LIMIT 1) as lastMessage,
             (SELECT COUNT(*) FROM ai_messages WHERE session_id = s.id) as messageCount
-          FROM ai_sessions s ORDER BY s.updated_at DESC
-        `).all();
+          FROM ai_sessions s WHERE s.workspace_id = ? ORDER BY s.updated_at DESC
+        `).all(workspaceId);
         res.json(sessions);
       } catch (err) {
         res.status(500).json({ error: err.message });
@@ -63,7 +74,7 @@ export class AiAssistantWorkspace extends WorkspaceBase {
       try {
         const id = randomUUID();
         const title = req.body.title || 'New conversation';
-        db.prepare('INSERT INTO ai_sessions (id, title) VALUES (?, ?)').run(id, title);
+        db.prepare('INSERT INTO ai_sessions (id, title, workspace_id) VALUES (?, ?, ?)').run(id, title, workspaceId);
         res.json({ id, title, created_at: new Date().toISOString() });
       } catch (err) {
         res.status(500).json({ error: err.message });
@@ -73,7 +84,7 @@ export class AiAssistantWorkspace extends WorkspaceBase {
     // Delete session
     router.delete('/sessions/:id', (req, res) => {
       try {
-        db.prepare('DELETE FROM ai_sessions WHERE id = ?').run(req.params.id);
+        db.prepare('DELETE FROM ai_sessions WHERE id = ? AND workspace_id = ?').run(req.params.id, workspaceId);
         res.json({ success: true });
       } catch (err) {
         res.status(500).json({ error: err.message });
@@ -97,8 +108,8 @@ export class AiAssistantWorkspace extends WorkspaceBase {
         if (!sessionId || !message) {
           return res.status(400).json({ error: 'sessionId and message required' });
         }
-        if (!config.openClaw.token) {
-          return res.status(400).json({ error: 'OpenClaw not configured' });
+        if (!gw.token) {
+          return res.status(400).json({ error: 'Gateway not configured' });
         }
 
         // Store user message
@@ -117,7 +128,6 @@ export class AiAssistantWorkspace extends WorkspaceBase {
         const messages = history.map(m => {
           if (m.role === 'user' && m.attachments) {
             const parsed = JSON.parse(m.attachments);
-            // For the current message, include actual image data
             if (m.content === message && attachments?.length) {
               const content = [{ type: 'text', text: m.content }];
               for (const att of attachments) {
@@ -137,23 +147,29 @@ export class AiAssistantWorkspace extends WorkspaceBase {
         // Get WS connection for streaming
         const ws = requestId ? aiStreams.get(requestId) : null;
 
-        // Call OpenClaw
-        const response = await fetch(`${config.openClaw.gatewayUrl}/v1/chat/completions`, {
+        const chatHeaders = {
+          Authorization: `Bearer ${gw.token}`,
+          'Content-Type': 'application/json',
+        };
+        if (gw.defaultModel) {
+          chatHeaders['x-openclaw-model'] = gw.defaultModel;
+        }
+
+        const response = await fetch(`${gw.gatewayUrl}/v1/chat/completions`, {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${config.openClaw.token}`,
-            'Content-Type': 'application/json',
-          },
+          headers: chatHeaders,
           body: JSON.stringify({
-            model: config.openClaw.defaultModel,
+            model: 'openclaw/default',
             messages,
             stream: true,
+            user: sessionId,
           }),
         });
 
         if (!response.ok) {
           const errText = await response.text();
-          if (ws) ws.send(JSON.stringify({ type: 'ai:error', requestId, error: `Gateway error: ${response.status} ${errText}` }));
+          const shortErr = errText.length > 200 ? errText.slice(0, 200) + '...' : errText;
+          if (ws) ws.send(JSON.stringify({ type: 'ai:error', requestId, error: `Gateway error: ${response.status} ${shortErr}` }));
           return res.json({ success: false, error: `Gateway error: ${response.status}` });
         }
 
@@ -169,7 +185,7 @@ export class AiAssistantWorkspace extends WorkspaceBase {
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
-          buffer = lines.pop(); // Keep incomplete line in buffer
+          buffer = lines.pop();
 
           for (const line of lines) {
             if (!line.startsWith('data: ')) continue;
@@ -191,7 +207,7 @@ export class AiAssistantWorkspace extends WorkspaceBase {
 
         // Store assistant message
         const result = db.prepare('INSERT INTO ai_messages (session_id, role, content, model) VALUES (?, ?, ?, ?)').run(
-          sessionId, 'assistant', fullContent, config.openClaw.defaultModel
+          sessionId, 'assistant', fullContent, gw.defaultModel || 'openclaw/default'
         );
 
         // Auto-title session if it's the first exchange
@@ -203,10 +219,9 @@ export class AiAssistantWorkspace extends WorkspaceBase {
 
         if (ws) ws.send(JSON.stringify({ type: 'ai:done', requestId, messageId: result.lastInsertRowid }));
 
-        // Cleanup stream subscription
         if (requestId) aiStreams.delete(requestId);
 
-        audit('ai.chat', sessionId, { model: config.openClaw.defaultModel, hasImages: !!attachments?.length });
+        audit('ai.chat', sessionId, { workspace: workspaceId, model: gw.defaultModel, hasImages: !!attachments?.length });
         res.json({ success: true, messageId: result.lastInsertRowid });
       } catch (err) {
         const ws = req.body.requestId ? aiStreams.get(req.body.requestId) : null;
@@ -217,5 +232,30 @@ export class AiAssistantWorkspace extends WorkspaceBase {
     });
 
     return router;
+  }
+}
+
+// Pre-configured workspace instances
+export class OpenClawWorkspace extends AiGatewayWorkspace {
+  constructor() {
+    super({
+      id: 'openclaw-ai',
+      name: 'OpenClaw AI',
+      icon: 'Claw',
+      description: 'Chat with AI via OpenClaw gateway',
+      gateway: config.openClaw,
+    });
+  }
+}
+
+export class SynthiqWorkspace extends AiGatewayWorkspace {
+  constructor() {
+    super({
+      id: 'synthiq-ai',
+      name: 'Synthiq AI',
+      icon: 'Sparkles',
+      description: 'Chat with AI via Synthiq gateway',
+      gateway: config.synthiq,
+    });
   }
 }

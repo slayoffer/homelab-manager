@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 
-export function useAiChat() {
+export function useAiChat(workspaceId) {
   const [streamContent, setStreamContent] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState(null);
@@ -46,11 +46,9 @@ export function useAiChat() {
 
       const doSend = () => {
         ws.addEventListener('message', onMessage);
-        // Subscribe for streaming
         ws.send(JSON.stringify({ type: 'ai', action: 'subscribe', requestId }));
 
-        // Send chat request via REST
-        fetch('/api/workspaces/ai-assistant/chat', {
+        fetch(`/api/workspaces/${workspaceId}/chat`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -69,7 +67,7 @@ export function useAiChat() {
         ws.addEventListener('open', doSend, { once: true });
       }
     });
-  }, [getWs]);
+  }, [getWs, workspaceId]);
 
   const clearStream = useCallback(() => {
     setStreamContent('');

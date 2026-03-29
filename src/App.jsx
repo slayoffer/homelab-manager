@@ -6,7 +6,12 @@ import { WorkspaceStub } from '@/components/stubs/WorkspaceStub';
 import { AiAssistantDashboard } from '@/components/ai-assistant/AiAssistantDashboard';
 import { LoginPage } from '@/components/auth/LoginPage';
 import { useApi } from '@/hooks/useApi';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Shell, Sparkles } from 'lucide-react';
+
+const AI_WORKSPACES = {
+  'openclaw-ai': { name: 'OpenClaw AI', Icon: Shell },
+  'synthiq-ai': { name: 'Synthiq AI', Icon: Sparkles },
+};
 
 function AppContent() {
   const { user, authEnabled, loading: authLoading } = useAuth();
@@ -15,7 +20,6 @@ function AppContent() {
   const [activeId, setActiveId] = useState('wow');
   const [loading, setLoading] = useState(true);
 
-  // If auth is enabled and user isn't logged in, show login page
   const needsLogin = authEnabled && !user;
 
   useEffect(() => {
@@ -30,7 +34,6 @@ function AppContent() {
     loadWorkspaces();
   }, [get, authLoading, needsLogin]);
 
-  // Show loading while checking auth
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -39,12 +42,10 @@ function AppContent() {
     );
   }
 
-  // Show login page if auth required
   if (needsLogin) {
     return <LoginPage />;
   }
 
-  // Show loading while fetching workspaces
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -58,7 +59,16 @@ function AppContent() {
   const renderWorkspace = () => {
     if (!activeWorkspace) return null;
     if (activeWorkspace.id === 'wow') return <WowDashboard />;
-    if (activeWorkspace.id === 'ai-assistant') return <AiAssistantDashboard />;
+    const aiConfig = AI_WORKSPACES[activeWorkspace.id];
+    if (aiConfig) {
+      return (
+        <AiAssistantDashboard
+          workspaceId={activeWorkspace.id}
+          workspaceName={aiConfig.name}
+          WorkspaceIcon={aiConfig.Icon}
+        />
+      );
+    }
     return <WorkspaceStub workspace={activeWorkspace} />;
   };
 

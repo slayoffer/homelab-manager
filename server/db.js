@@ -127,6 +127,10 @@ const MIGRATIONS = [
   );
 
   CREATE INDEX IF NOT EXISTS idx_ai_messages_session ON ai_messages(session_id);`,
+
+  // Migration 4: Add workspace_id to AI tables for multi-workspace support
+  `ALTER TABLE ai_sessions ADD COLUMN workspace_id TEXT DEFAULT 'openclaw-ai';
+  CREATE INDEX IF NOT EXISTS idx_ai_sessions_workspace ON ai_sessions(workspace_id);`,
 ];
 
 function runMigrations() {

@@ -1,4 +1,4 @@
-import { Sword, Container, Server, Globe, MonitorCog, Home, LogOut, BrainCircuit } from 'lucide-react';
+import { Sword, Container, Server, Globe, MonitorCog, Home, LogOut, Shell, Sparkles } from 'lucide-react';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
@@ -9,7 +9,9 @@ const iconMap = {
   Server,
   Globe,
   MonitorCog,
-  BrainCircuit,
+  Shell,
+  Sparkles,
+  Claw: Shell,
 };
 
 export function Sidebar({ workspaces, activeId, onSelect, user }) {

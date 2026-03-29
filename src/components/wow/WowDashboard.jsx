@@ -55,6 +55,7 @@ export function WowDashboard() {
   const [activeTab, setActiveTab] = useState('status');
   const [logsContainer, setLogsContainer] = useState('');
   const [logAlertCount, setLogAlertCount] = useState(0);
+  const [pullResults, setPullResults] = useState({});
 
   const refreshStatus = useCallback(async () => {
     setLoadingStatus(true);
@@ -78,6 +79,13 @@ export function WowDashboard() {
   useEffect(() => { refreshStatus(); }, [refreshStatus]);
   useEffect(() => { refreshStats(); }, [refreshStats]);
 
+  // Auto-check for updates when switching to Updates tab
+  useEffect(() => {
+    if (activeTab === 'updates' && !updates && !checking) {
+      checkUpdates();
+    }
+  }, [activeTab]);
+
   const checkUpdates = async () => {
     setChecking(true);
     const data = await post('/workspaces/wow/repos/fetch');
@@ -91,18 +99,33 @@ export function WowDashboard() {
 
   const pullAll = async () => {
     setPullingAll(true);
-    await post('/workspaces/wow/repos/pull');
-    setUpdates(null);
+    const results = await post('/workspaces/wow/repos/pull');
+    if (Array.isArray(results)) {
+      const resultMap = {};
+      for (const r of results) resultMap[r.id] = r;
+      setPullResults(resultMap);
+    }
     setNeedsRebuild(true);
     await refreshStatus();
+    await checkUpdates();
     setPullingAll(false);
   };
 
   const pullSingle = async (repoId) => {
     setPullingRepo(prev => ({ ...prev, [repoId]: true }));
-    await post(`/workspaces/wow/repos/${repoId}/pull`);
+    const result = await post(`/workspaces/wow/repos/${repoId}/pull`);
+    if (result) {
+      setPullResults(prev => ({ ...prev, [repoId]: result }));
+    }
     setNeedsRebuild(true);
     await refreshStatus();
+    // Re-check this repo's update status
+    const fetchData = await post('/workspaces/wow/repos/fetch');
+    if (Array.isArray(fetchData)) {
+      const updateMap = {};
+      for (const u of fetchData) updateMap[u.id] = u;
+      setUpdates(updateMap);
+    }
     setPullingRepo(prev => ({ ...prev, [repoId]: false }));
   };
 
@@ -410,6 +433,7 @@ export function WowDashboard() {
                 key={repo.id}
                 repo={repo}
                 updateInfo={updates?.[repo.id]}
+                pullResult={pullResults[repo.id]}
                 onPull={() => pullSingle(repo.id)}
                 pulling={pullingRepo[repo.id]}
               />
