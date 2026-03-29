@@ -212,7 +212,15 @@ export function WowDashboard() {
           disabled={running}
         >
           <Hammer className="h-4 w-4 mr-2" />
-          Rebuild & Restart
+          Rebuild
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => sendAction('restart')}
+          disabled={running}
+        >
+          <RotateCcw className="h-4 w-4 mr-2" />
+          Restart
         </Button>
       </div>
 
@@ -401,7 +409,7 @@ export function WowDashboard() {
                   className="bg-amber-500 hover:bg-amber-600 text-black"
                 >
                   <Hammer className="h-3 w-3 mr-1.5" />
-                  Rebuild & Restart
+                  Rebuild
                 </Button>
                 <Button
                   variant="ghost"

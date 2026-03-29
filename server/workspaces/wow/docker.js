@@ -34,7 +34,10 @@ export function dockerComposeAction(action, ws) {
       args = ['compose', 'down'];
       break;
     case 'rebuild':
-      args = ['compose', 'up', '-d', '--build'];
+      args = ['compose', 'up', '-d', '--build', '--force-recreate', '--remove-orphans'];
+      break;
+    case 'restart':
+      args = ['compose', 'restart'];
       break;
     case 'build':
       args = ['compose', 'build'];

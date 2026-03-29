@@ -30,14 +30,32 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Sync and rebuild
+        env:
+          OPENCLAW_GATEWAY_URL: ${{ secrets.OPENCLAW_GATEWAY_URL }}
+          OPENCLAW_GATEWAY_TOKEN: ${{ secrets.OPENCLAW_GATEWAY_TOKEN }}
+          OPENCLAW_MODEL: ${{ secrets.OPENCLAW_MODEL }}
+          SYNTHIQ_GATEWAY_URL: ${{ secrets.SYNTHIQ_GATEWAY_URL }}
+          SYNTHIQ_GATEWAY_TOKEN: ${{ secrets.SYNTHIQ_GATEWAY_TOKEN }}
+          SYNTHIQ_MODEL: ${{ secrets.SYNTHIQ_MODEL }}
         run: |
           DEPLOY_PATH="/home/slayo/docker/homelab-manager"
 
-          # Copy source files (preserve compose.yml with secrets)
+          # Copy source files
           cp -r server "$DEPLOY_PATH/"
           cp -r src "$DEPLOY_PATH/"
           cp package.json package-lock.json Dockerfile "$DEPLOY_PATH/"
+          cp compose.yml "$DEPLOY_PATH/"
           cp -r .github "$DEPLOY_PATH/" 2>/dev/null || true
+
+          # Generate .env from secrets
+          cat > "$DEPLOY_PATH/.env" <<EOF
+OPENCLAW_GATEWAY_URL=${OPENCLAW_GATEWAY_URL}
+OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
+OPENCLAW_MODEL=${OPENCLAW_MODEL}
+SYNTHIQ_GATEWAY_URL=${SYNTHIQ_GATEWAY_URL}
+SYNTHIQ_GATEWAY_TOKEN=${SYNTHIQ_GATEWAY_TOKEN}
+SYNTHIQ_MODEL=${SYNTHIQ_MODEL}
+EOF
 
           # Rebuild container
           cd "$DEPLOY_PATH"
