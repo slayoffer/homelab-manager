@@ -150,6 +150,7 @@ export class AiGatewayWorkspace extends WorkspaceBase {
         const chatHeaders = {
           Authorization: `Bearer ${gw.token}`,
           'Content-Type': 'application/json',
+          'x-openclaw-scopes': 'operator.admin,operator.read,operator.write',
         };
         if (gw.defaultModel) {
           chatHeaders['x-openclaw-model'] = gw.defaultModel;
