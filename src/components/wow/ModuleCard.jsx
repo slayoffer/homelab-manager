@@ -7,6 +7,7 @@ import {
   GitBranch, Download, Loader2, Check, ExternalLink,
   ChevronDown, ChevronRight, Clock, GitCommit, AlertCircle,
 } from 'lucide-react';
+import { CopyPath } from '@/components/shared/CopyPath';
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -91,6 +92,9 @@ export function ModuleCard({ repo, updateInfo, pullResult, onPull, pulling }) {
             <p className="text-xs text-muted-foreground/70 truncate">
               {repo.commitMessage}
             </p>
+
+            {/* Copy path */}
+            <CopyPath path={repo.path} />
 
             {/* Pull result feedback */}
             {pullMessage && !hasUpdates && (

@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { CopyPath } from '@/components/shared/CopyPath';
 import { ConfigFileBrowser } from './ConfigFileBrowser';
 import { ConfigSettingsView } from './ConfigSettingsView';
 import { ConfigRawEditor } from './ConfigRawEditor';
@@ -230,6 +231,7 @@ export function ConfigEditor() {
                 <span className="text-sm font-medium font-mono">
                   {selectedFile.split('/').pop().replace('.conf', '')}
                 </span>
+                <CopyPath path={selectedFile} />
                 {summary && (
                   <div className="flex items-center gap-1">
                     {summary.new > 0 && (
