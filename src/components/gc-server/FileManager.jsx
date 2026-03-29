@@ -7,7 +7,7 @@ import { useApi } from '@/hooks/useApi';
 import { CopyPath } from '@/components/shared/CopyPath';
 import {
   Folder, File, FileText, FolderPlus, FilePlus, RefreshCw,
-  Loader2, ChevronRight, Pencil, Trash2, X, Check, ArrowUp,
+  Loader2, ChevronRight, Pencil, Trash2, X, Check, ArrowUp, Maximize2, Minimize2,
 } from 'lucide-react';
 
 function formatBytes(bytes) {
@@ -38,6 +38,7 @@ export function FileManager() {
   const [dialogInput, setDialogInput] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [viewFullscreen, setViewFullscreen] = useState(false);
 
   const loadDir = useCallback(async (path) => {
     setLoading(true);
@@ -54,6 +55,14 @@ export function FileManager() {
   }, [get]);
 
   useEffect(() => { loadDir(currentPath); }, []);
+
+  // Escape exits fullscreen viewer
+  useEffect(() => {
+    if (!viewFullscreen) return;
+    const handleKey = (e) => { if (e.key === 'Escape') setViewFullscreen(false); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [viewFullscreen]);
 
   const navigate = (path) => {
     setViewFile(null);
@@ -278,30 +287,41 @@ export function FileManager() {
 
       {/* File viewer */}
       {(viewFile || viewLoading) && (
-        <Card>
-          <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-            <div className="flex items-center gap-2 min-w-0">
-              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-xs font-mono truncate">{viewFile?.name || '...'}</span>
-              {viewFile && <Badge variant="outline" className="text-[9px]">{formatBytes(viewFile.size)}</Badge>}
-              {viewFile && <CopyPath path={viewFile.path} />}
-            </div>
-            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setViewFile(null)}>
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-          <ScrollArea className="max-h-[400px]">
-            {viewLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <div className={`flex flex-col ${viewFullscreen ? 'fixed inset-0 z-50 bg-background p-4' : ''}`}>
+          <Card className="flex flex-col flex-1 overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-xs font-mono truncate">{viewFile?.name || '...'}</span>
+                {viewFile && <Badge variant="outline" className="text-[9px]">{formatBytes(viewFile.size)}</Badge>}
+                {viewFile && <CopyPath path={viewFile.path} />}
               </div>
-            ) : (
-              <pre className="p-3 text-xs font-mono whitespace-pre-wrap break-words">
-                {viewFile?.content}
-              </pre>
-            )}
-          </ScrollArea>
-        </Card>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost" size="icon" className="h-7 w-7"
+                  onClick={() => setViewFullscreen(!viewFullscreen)}
+                  title={viewFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen'}
+                >
+                  {viewFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setViewFile(null); setViewFullscreen(false); }}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+            <ScrollArea className={viewFullscreen ? 'flex-1' : 'max-h-[400px]'}>
+              {viewLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <pre className="p-3 text-xs font-mono whitespace-pre-wrap break-words">
+                  {viewFile?.content}
+                </pre>
+              )}
+            </ScrollArea>
+          </Card>
+        </div>
       )}
 
       {/* Entry count */}
