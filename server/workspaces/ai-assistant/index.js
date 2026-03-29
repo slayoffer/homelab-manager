@@ -22,6 +22,7 @@ export class AiGatewayWorkspace extends WorkspaceBase {
   async getStatus() {
     if (!this.gateway.token) return { status: 'unconfigured' };
     try {
+      // Try /v1/models first (full HTTP surface)
       const res = await fetch(`${this.gateway.gatewayUrl}/v1/models`, {
         headers: {
           Authorization: `Bearer ${this.gateway.token}`,
@@ -29,12 +30,17 @@ export class AiGatewayWorkspace extends WorkspaceBase {
         },
         signal: AbortSignal.timeout(5000),
       });
-      if (!res.ok) return { status: 'error', code: res.status };
       const contentType = res.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
-        return { status: 'error', detail: 'HTTP endpoint may be disabled on gateway' };
+      if (res.ok && contentType.includes('application/json')) {
+        return { status: 'connected' };
       }
-      return { status: 'connected' };
+      // Fallback: probe chat endpoint (GET returns 405 = endpoint exists)
+      const probe = await fetch(`${this.gateway.gatewayUrl}/v1/chat/completions`, {
+        headers: { Authorization: `Bearer ${this.gateway.token}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (probe.status === 405) return { status: 'connected' };
+      return { status: 'error', code: res.status };
     } catch {
       return { status: 'disconnected' };
     }
