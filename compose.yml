@@ -7,13 +7,13 @@ services:
     volumes:
       - /home/slayo/docker:/homelab/docker:ro
       - /var/run/docker.sock:/var/run/docker.sock
-      - /home/slayo/docker/wow/azerothcore-wotlk:/wow
+      - /home/slayo/docker/wow/azerothcore-wotlk:/home/slayo/docker/wow/azerothcore-wotlk
       - ./data:/data
       - /opt/backups/wow:/backups
       - /home/slayo/.ssh/geekconsole_timeweb_rsa:/root/.ssh/geekconsole_timeweb_rsa:ro
     environment:
-      - WOW_PATH=/wow
-      - WOW_COMPOSE_PATH=/wow
+      - WOW_PATH=/home/slayo/docker/wow/azerothcore-wotlk
+      - WOW_COMPOSE_PATH=/home/slayo/docker/wow/azerothcore-wotlk
       - STATE_PATH=/data/state.json
       - DB_PATH=/data/homelab.db
       - BACKUP_DIR=/backups
