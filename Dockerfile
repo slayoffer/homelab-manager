@@ -8,7 +8,7 @@ RUN npm run build
 
 FROM node:20-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git docker.io openssh-client bash \
+    git docker.io docker-compose-v2 openssh-client bash \
     && rm -rf /var/lib/apt/lists/* \
     && git config --global --add safe.directory '*'
 WORKDIR /app

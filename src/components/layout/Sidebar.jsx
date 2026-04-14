@@ -110,7 +110,7 @@ export function Sidebar({ workspaces, activeId, onSelect, onReorder, user }) {
                   )}
                 </div>
                 {ws.status === 'stub' && (
-                  <StatusBadge status="stub" />
+                  <StatusBadge status="stub" label="Soon" />
                 )}
               </button>
             </div>
