@@ -24,23 +24,25 @@ export function getContainerStatus() {
 
 export function dockerComposeAction(action, ws) {
   const composePath = config.wow.composePath;
+  const composeProject = config.wow.composeProject;
+  const base = ['compose', '-p', composeProject];
   let args;
 
   switch (action) {
     case 'start':
-      args = ['compose', 'up', '-d', '--remove-orphans'];
+      args = [...base, 'up', '-d', '--remove-orphans'];
       break;
     case 'stop':
-      args = ['compose', 'down'];
+      args = [...base, 'down'];
       break;
     case 'rebuild':
-      args = ['compose', 'up', '-d', '--build', '--force-recreate', '--remove-orphans'];
+      args = [...base, 'up', '-d', '--build', '--force-recreate', '--remove-orphans'];
       break;
     case 'restart':
-      args = ['compose', 'restart'];
+      args = [...base, 'restart'];
       break;
     case 'build':
-      args = ['compose', 'build'];
+      args = [...base, 'build'];
       break;
     default:
       if (ws) ws.send(JSON.stringify({ type: 'error', data: `Unknown action: ${action}` }));

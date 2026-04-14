@@ -8,6 +8,7 @@ const config = {
   wow: {
     basePath: process.env.WOW_PATH || '/home/slayo/docker/wow/azerothcore-wotlk',
     composePath: process.env.WOW_COMPOSE_PATH || '/home/slayo/docker/wow/azerothcore-wotlk',
+    composeProject: process.env.WOW_COMPOSE_PROJECT || 'azerothcore-wotlk',
     dbContainer: 'ac-database',
     dbUser: process.env.WOW_DB_USER || 'root',
     dbPassword: process.env.WOW_DB_PASSWORD || 'password',
