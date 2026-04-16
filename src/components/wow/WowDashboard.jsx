@@ -36,7 +36,7 @@ function parseMemPercent(str) {
 export function WowDashboard() {
   const { get, post, del } = useApi();
   const {
-    logs, running, sendAction, sendBackup, clearLogs,
+    logs, running, sendAction, sendBackup, clearLogs, appendLog,
     containerLogs, followingContainer, sendLogs, stopLogs, clearContainerLogs,
   } = useWebSocket();
   const [containers, setContainers] = useState([]);
@@ -108,10 +108,14 @@ export function WowDashboard() {
 
   const pullAll = async () => {
     setPullingAll(true);
+    appendLog('> git pull (all repos)...\n');
     const results = await post('/workspaces/wow/repos/pull');
     if (Array.isArray(results)) {
       const resultMap = {};
-      for (const r of results) resultMap[r.id] = r;
+      for (const r of results) {
+        resultMap[r.id] = r;
+        appendLog(`${r.name}: ${r.success ? r.output?.trim() || 'up to date' : `ERROR: ${r.error || 'failed'}`}\n`);
+      }
       setPullResults(resultMap);
     }
     setNeedsRebuild(true);
@@ -122,13 +126,14 @@ export function WowDashboard() {
 
   const pullSingle = async (repoId) => {
     setPullingRepo(prev => ({ ...prev, [repoId]: true }));
+    appendLog(`> git pull ${repoId}...\n`);
     const result = await post(`/workspaces/wow/repos/${repoId}/pull`);
     if (result) {
       setPullResults(prev => ({ ...prev, [repoId]: result }));
+      appendLog(`${result.name}: ${result.success ? result.output?.trim() || 'up to date' : `ERROR: ${result.error || 'failed'}`}\n`);
     }
     setNeedsRebuild(true);
     await refreshStatus();
-    // Re-check this repo's update status
     const fetchData = await post('/workspaces/wow/repos/fetch');
     if (Array.isArray(fetchData)) {
       const updateMap = {};
@@ -141,7 +146,9 @@ export function WowDashboard() {
   const installModule = async () => {
     if (!newModuleUrl || !newModuleName) return;
     setInstalling(true);
-    await post('/workspaces/wow/modules/install', { gitUrl: newModuleUrl, name: newModuleName });
+    appendLog(`> git clone ${newModuleName}...\n`);
+    const res = await post('/workspaces/wow/modules/install', { gitUrl: newModuleUrl, name: newModuleName });
+    appendLog(res?.success ? `Installed ${newModuleName} at ${res.path}\n` : `ERROR: ${res?.error || 'install failed'}\n`);
     setNewModuleUrl('');
     setNewModuleName('');
     await refreshStatus();
@@ -150,7 +157,9 @@ export function WowDashboard() {
 
   const removeModule = async (name) => {
     if (!confirm(`Remove module ${name}? This deletes the directory.`)) return;
-    await del(`/workspaces/wow/modules/${name}`);
+    appendLog(`> removing module ${name}...\n`);
+    const res = await del(`/workspaces/wow/modules/${name}`);
+    appendLog(res?.success ? `Removed ${name}\n` : `ERROR: ${res?.error || 'remove failed'}\n`);
     await refreshStatus();
   };
 
@@ -232,9 +241,6 @@ export function WowDashboard() {
           Restart
         </Button>
       </div>
-
-      {/* Terminal Output */}
-      <TerminalOutput logs={logs} onClear={clearLogs} />
 
       {/* Tabs — grouped: Monitor | Maintain | Manage | Ops */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -387,6 +393,7 @@ export function WowDashboard() {
               </Card>
             )}
           </div>
+          <TerminalOutput logs={logs} onClear={clearLogs} />
         </TabsContent>
 
         {/* ===== Logs Tab ===== */}
@@ -463,11 +470,13 @@ export function WowDashboard() {
               </Card>
             )}
           </div>
+          <TerminalOutput logs={logs} onClear={clearLogs} />
         </TabsContent>
 
         {/* ===== Migrations Tab ===== */}
-        <TabsContent value="migrations" className="mt-4">
-          <SqlMigrations />
+        <TabsContent value="migrations" className="space-y-4 mt-4">
+          <SqlMigrations appendLog={appendLog} />
+          <TerminalOutput logs={logs} onClear={clearLogs} />
         </TabsContent>
 
         {/* ===== Config Tab ===== */}
@@ -547,11 +556,13 @@ export function WowDashboard() {
               </Card>
             )}
           </div>
+          <TerminalOutput logs={logs} onClear={clearLogs} />
         </TabsContent>
 
         {/* ===== Backups Tab ===== */}
-        <TabsContent value="backups" className="mt-4">
+        <TabsContent value="backups" className="space-y-4 mt-4">
           <BackupRestore onBackup={sendBackup} running={running} />
+          <TerminalOutput logs={logs} onClear={clearLogs} />
         </TabsContent>
 
         {/* ===== Activity Tab ===== */}

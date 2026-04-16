@@ -11,7 +11,7 @@ import { Database, ChevronDown, ChevronRight, Play, Square, Loader2, CheckCircle
 
 const DB_CONTAINER = 'ac-database';
 
-export function SqlMigrations() {
+export function SqlMigrations({ appendLog }) {
   const { get, post } = useApi();
   const [modules, setModules] = useState([]);
   const [selected, setSelected] = useState({});
@@ -105,13 +105,18 @@ export function SqlMigrations() {
     if (!migrations.length) return;
 
     setApplying(true);
-    // Save preferences before applying
     const moduleNames = [...new Set(migrations.map(m => m.module))];
     for (const name of moduleNames) {
       await savePreferences(name);
     }
 
+    appendLog?.(`> Applying ${migrations.length} migration(s)...\n`);
     const res = await post('/workspaces/wow/migrations/apply', { migrations });
+    if (Array.isArray(res)) {
+      for (const r of res) {
+        appendLog?.(r.success ? `${r.id}: OK\n` : `${r.id}: ERROR: ${r.error}\n`);
+      }
+    }
     setResults(res);
     setApplying(false);
   };

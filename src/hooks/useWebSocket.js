@@ -135,9 +135,10 @@ export function useWebSocket() {
 
   const clearLogs = useCallback(() => setLogs([]), []);
   const clearContainerLogs = useCallback(() => setContainerLogs([]), []);
+  const appendLog = useCallback((msg) => setLogs(prev => [...prev, msg]), []);
 
   return {
-    logs, connected, running, sendAction, sendBackup, clearLogs,
+    logs, connected, running, sendAction, sendBackup, clearLogs, appendLog,
     containerLogs, followingContainer, sendLogs, stopLogs, clearContainerLogs,
   };
 }
